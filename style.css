@@ -325,11 +325,11 @@ input[type="number"]::part(decrement) {
   cursor: pointer;
   outline: none;
   transition: transform 0.1s ease, box-shadow 0.2s ease;
-  flex: 0 0 22px;
+  flex: 0 0 auto;
   margin: 1px;
 }
 
-.room-color-option:hover {
+.room-color-option:hover:not(.selected) {
   transform: scale(1.1);
   box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
 }
@@ -337,8 +337,7 @@ input[type="number"]::part(decrement) {
 .room-color-option.selected {
   outline: 2px solid #ffffff;
   box-shadow: 0 0 0 2px #4d4d94;
-  width: 22px;
-  height: 22px;
+  transform: none;
 }
 
 /* Distribute color buttons evenly and use full width for #roomColorOptions */

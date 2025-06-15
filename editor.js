@@ -174,7 +174,11 @@ window.addEventListener('load', () => {
   // Room color selector logic
   document.querySelectorAll('.room-color-option').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.room-color-option').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.room-color-option').forEach(b => {
+        b.classList.remove('selected');
+        b.style.removeProperty('transform');
+        b.style.zIndex = '';
+      });
       btn.classList.add('selected');
       selectedRoomColor = btn.dataset.color;
       // Update color of selected room immediately if a room is selected
