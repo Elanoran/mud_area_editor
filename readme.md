@@ -49,7 +49,7 @@ You can add new formats to `formats.json` without modifying the core code, makin
 2. Use the sidebar to input room data.
 3. Click to place and link rooms.
 4. Use export/import buttons to work with file formats or JSON.
-5. This editor loads resources via JavaScript, so a local web server is required to avoid CORS or file access issues. You can use Python’s built-in server for quick testing:
+5. This editor loads resources via JavaScript, so a web server is required to avoid CORS or file access issues. You can use Python’s built-in server for quick testing:
 
    For Python 3:
    ```bash
