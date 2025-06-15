@@ -4,7 +4,7 @@ This is a browser-based MUD (Multi-User Dungeon) area editor for managing rooms,
 
 ## Screenshot
 
-![Screenshot of the MUD Area Editor](screenshot.png)
+![Screenshot of the MUD Area Editor](Screenshot.png)
 
 ## Supported Features
 
