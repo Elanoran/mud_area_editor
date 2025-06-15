@@ -177,6 +177,7 @@ window.addEventListener('load', () => {
       document.querySelectorAll('.room-color-option').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedRoomColor = btn.dataset.color;
+      // Update color of selected room immediately if a room is selected
       if (selectedRoom) {
         selectedRoom.material.color.set(selectedRoomColor);
         selectedRoom.userData.color = selectedRoomColor;
@@ -560,19 +561,22 @@ window.addEventListener('load', () => {
               alert("No available vnums in range " + minVnum + "-" + maxVnum);
               return;
             }
+            // Ensure color is set from current selection or fallback
+            const color = selectedRoomColor || '#cccccc';
             const box = new THREE.Mesh(
               new THREE.BoxGeometry(1, 1, 1),
-              new THREE.MeshStandardMaterial({ color: selectedRoomColor, emissive: 0x000000 })
+              new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
             );
             box.position.set(x, 0.5, z);
+            // Explicitly set material color and userData.color
+            box.material.color.set(color);
             box.userData = {
               id: vnum,
               exits: {},
               exitLines: [],
-              color: selectedRoomColor,
+              color: color,
               level: currentLevel
             };
-            box.material.color.set(selectedRoomColor);
             levelContainers[levelIndex].add(box);
             rooms[levelIndex].push(box);
           }
@@ -674,12 +678,16 @@ window.addEventListener('load', () => {
             if (!obj.material.transparent) {
               obj.material.transparent = true;
             }
-            // Color adjustment instead of opacity
+            // Always restore room color from userData.color, not from current color picker
             if (obj.material.color && obj.material.color instanceof THREE.Color) {
+              // Use room.userData.color if present, else fallback to '#cccccc'
+              const targetColor = obj.userData?.color || '#cccccc';
+              obj.material.color.set(targetColor);
+              // Optionally fade color toward 0x8888ff for distant levels (keep fade logic)
               const fadeFactor = Math.min(1.0, distance * 0.2);
-              const baseColor = obj.material.userData?.baseColor || obj.material.color.clone();
-              obj.material.userData = { baseColor };
-              obj.material.color.copy(baseColor).lerp(new THREE.Color(0x8888ff), fadeFactor);
+              if (fadeFactor > 0.0) {
+                obj.material.color.lerp(new THREE.Color(0x8888ff), fadeFactor);
+              }
             }
           }
         });
@@ -1119,17 +1127,19 @@ ${exitsStr}${extrasStr}End
     // First pass: create all rooms
     data.forEach(entry => {
       const levelIndex = entry.level + LEVEL_OFFSET;
-      const color = entry.color || '#8888ff';
+      const color = entry.color || '#cccccc';
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(1, 1, 1),
         new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
       );
       box.position.set(entry.x, 0.5, entry.z);
+      // Explicitly set material color and userData.color
+      box.material.color.set(color);
       box.userData = {
         id: entry.id,
         exits: {},
         exitLines: [],
-        color,
+        color: color,
         level: entry.level || 0
       };
       usedVnums.add(entry.id);
