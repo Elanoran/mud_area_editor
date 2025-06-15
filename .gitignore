@@ -1,0 +1,27 @@
+
+
+# Node.js and general web project ignores
+node_modules/
+.DS_Store
+*.log
+npm-debug.log*
+dist/
+build/
+.env
+.vscode/
+.idea/
+
+# OS-specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Mac-specific
+.AppleDouble
+.LSOverride
+
+# Editor backups
+*~
+*.swp
+*.swo
+.*.swp
