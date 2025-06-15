@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <title>Room Editor</title>
+</head>
+<div id="controls">
+  <div class="level-controls">
+    <button id="upButton" class="ui-element">▲</button>
+    <button id="downButton" class="ui-element">▼</button>
+    <select id="levelSelector" style="width: 124px;" class="ui-element"></select>
+  </div>
+
+  <div class="file-controls">
+    <button id="exportFormatBtn" class="ui-element">Export As</button>
+    <select id="exportFormat" class="ui-element">
+      <option value="ROM" selected>ROM</option>
+      <option value="AW">AW</option>
+    </select>
+    <button id="exportJsonBtn" class="ui-element">Export JSON</button>
+    <button id="importJsonBtn" class="ui-element">Import JSON</button>
+    <input type="file" id="importInput" accept=".json" style="display:none">
+    <button id="helpBtn" class="ui-element">Help</button>
+  </div>
+<div id="area-info" class="ui-element">
+    <div class="field-group">
+    <label>Grid:<br>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <select id="gridSelect" class="full-width"></select>
+        <label style="display: flex; align-items: center; gap: 4px;">
+          <input type="checkbox" id="gridLock" checked>
+          Lock
+        </label>
+      </div>
+    </label>
+  </div>
+  <div class="field-group">
+    <hr style="border: none; border-top: 1px solid #cccccc38; margin: 10px 0;">
+    <label>Area Name:<br>
+      <input type="text" id="areaName" class="full-width">
+    </label>
+  </div>
+  <div class="field-group">
+    <label>Filename:<br>
+      <input type="text" id="filename" class="full-width">
+    </label>
+  </div>
+  <div class="vnum-row">
+    <div class="vnum-field">
+      <label>VNUM Min:<br>
+        <input type="number" id="vnumMin" class="full-width">
+      </label>
+    </div>
+    <div class="vnum-field">
+      <label>VNUM Max:<br>
+        <input type="number" id="vnumMax" class="full-width">
+      </label>
+    </div>
+  </div>
+  <div class="field-group">
+    <hr style="border: none; border-top: 1px solid #cccccc38; margin: 10px 0;">
+    <label>VNUM:<br>
+      <input type="number" id="roomVnum" class="full-width">
+    </label>
+  </div>
+  <div class="field-group">
+    <label>Name:<br>
+      <input type="text" id="roomName" class="full-width">
+    </label>
+  </div>
+  <div class="field-group">
+    <label>Description:<br>
+      <textarea id="roomDesc" class="full-width" rows="4"></textarea>
+    </label>
+  </div>
+</div>
+  <div id="helpPopup" class="ui-element" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#333; padding:20px; border:1px solid #888; z-index:1000; color:white;">
+    <button id="helpClose" style="position:absolute; top:5px; right:8px; font-size:16px; background:none; border:none; color:white; cursor:pointer;">✕</button>
+    <h2>Editor Help</h2>
+    <p>Welcome to the Room Editor. Here's what you can do:</p>
+    <ul>
+      <li>Use the grid to place rooms on different levels.</li>
+      <li><span class="key">Shift</span> + <span class="key">Left-click</span> on the grid to add a room.</li>
+      <li><span class="key">Shift</span> + <span class="key">Left-click</span> an existing room to remove it.</li>
+      <li><span class="key">click</span> a room to select it for linking.</li>
+      <li><span class="key">Shift</span> + <span class="key">Left-click</span> another room to create or remove a directional link between them.</li>
+      <li>Use the inputs on the left to edit room VNUM, name, and description.</li>
+      <li>Use the dropdowns and file buttons to import/export your layout.</li>
+    </ul>
+  </div>
+  <script type="module" src="editor.js" defer></script>
+</body>
+</html>
