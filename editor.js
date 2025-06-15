@@ -169,7 +169,26 @@ window.addEventListener('load', () => {
 
   let selectedFace = null;
   let selectedRoom = null;
+  let selectedRoomColor = '#8888ff';
   let isDragging = false;
+  // Room color selector logic
+  document.querySelectorAll('.room-color-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.room-color-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedRoomColor = btn.dataset.color;
+      if (selectedRoom) {
+        selectedRoom.material.color.set(selectedRoomColor);
+        selectedRoom.userData.color = selectedRoomColor;
+      }
+    });
+  });
+  // Auto-select the first color button on page load
+  const firstColorButton = document.querySelector('.room-color-option');
+  if (firstColorButton) {
+    firstColorButton.classList.add('selected');
+    selectedRoomColor = firstColorButton.dataset.color;
+  }
 
   let minVnum = 100;
   let maxVnum = 199;
@@ -245,39 +264,53 @@ window.addEventListener('load', () => {
     if (event.button === 0) {
       const current = currentLevel + LEVEL_OFFSET;
 
-      // --- Shift+Left click on room: remove room if not selectedFace, and only if on current level ---
+      // --- Shift+Left click on room: remove room only if nothing is currently selected for linking ---
       if (event.shiftKey && !selectedFace) {
         const intersects = raycaster.intersectObjects(rooms[current]);
         if (intersects.length > 0) {
           const intersect = intersects[0];
-          const room = intersect.object;
-          const index = rooms[current].indexOf(room);
-          if (index !== -1 && room.parent === levelContainers[current]) {
-            // Remove exits pointing to or from this room
-            room.userData.exitLines.forEach(line => {
-              levelContainers.forEach(container => container.remove(line));
-            });
-            rooms.forEach(level => {
-              level.forEach(other => {
-                if (other !== room) {
-                  const exits = other.userData.exits || {};
-                  for (let key in exits) {
-                    if (exits[key] === room) {
-                      delete exits[key];
+          // Only remove room if no room is currently selected (for linking)
+          if (!selectedRoom && intersect && intersect.object?.userData?.id !== undefined) {
+            const room = intersect.object;
+            const index = rooms[current].indexOf(room);
+            if (index !== -1 && room.parent === levelContainers[current]) {
+              // Remove exits pointing to or from this room
+              room.userData.exitLines.forEach(line => {
+                levelContainers.forEach(container => container.remove(line));
+              });
+              rooms.forEach(level => {
+                level.forEach(other => {
+                  if (other !== room) {
+                    const exits = other.userData.exits || {};
+                    for (let key in exits) {
+                      if (exits[key].room === room) {
+                        delete exits[key];
+                      }
                     }
                   }
-                }
+                });
               });
-            });
-            freeVnum(room.userData.id);
-            levelContainers[current].remove(room);
-            rooms[current].splice(index, 1);
-            return; // stop further handling
+              // Remove selection outline if the deleted room is currently selected
+              if (selectedRoom === room) {
+                if (selectedRoom.outlineMesh) {
+                  levelContainers[currentLevel + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+                  selectedRoom.outlineMesh.geometry.dispose();
+                  selectedRoom.outlineMesh.material.dispose();
+                  delete selectedRoom.outlineMesh;
+                }
+                selectedRoom = null;
+              }
+              freeVnum(room.userData.id);
+              levelContainers[current].remove(room);
+              rooms[current].splice(index, 1);
+              return; // stop further handling
+            }
           }
         }
       }
 
       // --- Existing intersect logic for left-click ---
+      // Only allow selection/toggling for rooms on currentLevel, currentLevel+1, currentLevel-1
       const candidates = [
         ...rooms[current],
         ...(rooms[current + 1] || []),
@@ -286,15 +319,26 @@ window.addEventListener('load', () => {
       const intersects = raycaster.intersectObjects(candidates);
       if (intersects.length > 0) {
         const intersect = intersects[0];
-
+        const room = intersect.object;
+        const roomLevel = room.userData.level;
+        const levelDiff = Math.abs(roomLevel - currentLevel);
+        if (levelDiff > 1) {
+          // Do not allow selection/toggle beyond ±1 level
+          return;
+        }
         if (!event.shiftKey) {
-          // Normal click selects a room, or deselects if already selected
-          if (!selectedFace || selectedFace.object !== intersect.object) {
-            if (selectedFace) {
-              selectedFace.object.material.emissive = new THREE.Color(0x000000);
+          // Restore previous logic: clicking toggles highlight (select/deselect) for rooms on current, +1, -1 level
+          if (!selectedRoom || selectedRoom !== room) {
+            // Remove previous outline mesh if any
+            if (selectedRoom?.outlineMesh) {
+              // Remove from its own level container
+              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+              selectedRoom.outlineMesh.geometry.dispose();
+              selectedRoom.outlineMesh.material.dispose();
+              delete selectedRoom.outlineMesh;
             }
-            selectedFace = { object: intersect.object, point: getRoomCenter(intersect.object) };
-            selectedRoom = intersect.object;
+            selectedRoom = room;
+            selectedFace = { object: room, point: getRoomCenter(room) };
             // Populate the VNUM and other fields when a room is selected
             if (selectedRoom) {
               const vnumField = document.getElementById('roomVnum');
@@ -304,10 +348,26 @@ window.addEventListener('load', () => {
               if (nameField) nameField.value = selectedRoom.userData.name ?? '';
               if (descField) descField.value = selectedRoom.userData.desc ?? '';
             }
-            intersect.object.material.emissive = new THREE.Color(0x3333ff);
+            // Create new outline mesh
+            const outlineMaterial = new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+              side: THREE.BackSide
+            });
+            const outlineMesh = new THREE.Mesh(selectedRoom.geometry.clone(), outlineMaterial);
+            outlineMesh.scale.multiplyScalar(1.05);
+            outlineMesh.position.copy(selectedRoom.position);
+            levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].add(outlineMesh);
+            // Store reference to cleanup later
+            selectedRoom.outlineMesh = outlineMesh;
             isDragging = true;
           } else {
-            intersect.object.material.emissive = new THREE.Color(0x000000);
+            // Deselect: remove outline mesh
+            if (selectedRoom?.outlineMesh) {
+              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+              selectedRoom.outlineMesh.geometry.dispose();
+              selectedRoom.outlineMesh.material.dispose();
+              delete selectedRoom.outlineMesh;
+            }
             selectedFace = null;
             selectedRoom = null;
           }
@@ -325,6 +385,14 @@ window.addEventListener('load', () => {
           if (Math.abs(step.x) + Math.abs(step.y) + Math.abs(step.z) !== 1) {
             from.material.emissive = new THREE.Color(0x000000);
             selectedFace = null;
+            // Ensure highlight and selection are cleared after failed link attempt
+            if (selectedRoom) {
+              const mat = selectedRoom.material;
+              if (mat && 'emissive' in mat) {
+                mat.emissive.setHex(0x000000);
+              }
+              selectedRoom = null;
+            }
             return;
           }
 
@@ -358,8 +426,22 @@ window.addEventListener('load', () => {
             }
             delete from.userData.exits[fromKey];
             delete to.userData.exits[toKey];
-            from.material.emissive = new THREE.Color(0x000000);
             selectedFace = null;
+            // --- Clear highlight and selectedRoom after link/unlink ---
+            // Ensure both the selectedRoom reference and its highlight are cleared
+            if (selectedRoom?.outlineMesh) {
+              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+              selectedRoom.outlineMesh.geometry.dispose();
+              selectedRoom.outlineMesh.material.dispose();
+              delete selectedRoom.outlineMesh;
+            }
+            if (selectedRoom) {
+              const mat = selectedRoom.material;
+              if (mat && 'emissive' in mat) {
+                mat.emissive.setHex(0x000000);
+              }
+              selectedRoom = null;
+            }
             return;
           }
 
@@ -400,9 +482,23 @@ window.addEventListener('load', () => {
               case 5: reverseDirection = 4; break; // Down → Up
             }
             to.userData.exits[toKey] = { room: from, direction: reverseDirection };
+            // Draw links (if any additional logic is needed, e.g., updating visuals)
+            // (If drawLinks() is a function, it would be called here. If not, ignore this comment.)
           }
-          from.material.emissive = new THREE.Color(0x000000);
           selectedFace = null;
+          // --- Clear highlight and selectedRoom after link creation ---
+          // Ensure both the selectedRoom reference and its highlight are cleared
+          // (Consistent with standard left-click toggle logic)
+          if (selectedRoom?.outlineMesh) {
+            levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+            selectedRoom.outlineMesh.geometry.dispose();
+            selectedRoom.outlineMesh.material.dispose();
+            delete selectedRoom.outlineMesh;
+          }
+          if (selectedRoom) {
+            selectedRoom.material.emissive.setHex(0x000000);
+            selectedRoom = null;
+          }
         }
         return;
       }
@@ -437,13 +533,23 @@ window.addEventListener('load', () => {
                 if (other !== room) {
                   const exits = other.userData.exits || {};
                   for (let key in exits) {
-                    if (exits[key] === room) {
+                    if (exits[key].room === room) {
                       delete exits[key];
                     }
                   }
                 }
               });
             });
+            // Remove selection outline if the deleted room is currently selected
+            if (selectedRoom === room) {
+              if (selectedRoom.outlineMesh) {
+                levelContainers[currentLevel + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+                selectedRoom.outlineMesh.geometry.dispose();
+                selectedRoom.outlineMesh.material.dispose();
+                delete selectedRoom.outlineMesh;
+              }
+              selectedRoom = null;
+            }
             freeVnum(room.userData.id);
             levelContainers[levelIndex].remove(room);
             rooms[levelIndex].splice(existingIndex, 1);
@@ -456,10 +562,17 @@ window.addEventListener('load', () => {
             }
             const box = new THREE.Mesh(
               new THREE.BoxGeometry(1, 1, 1),
-              new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x000000 })
+              new THREE.MeshStandardMaterial({ color: selectedRoomColor, emissive: 0x000000 })
             );
             box.position.set(x, 0.5, z);
-            box.userData = { id: vnum, exits: {}, exitLines: [] };
+            box.userData = {
+              id: vnum,
+              exits: {},
+              exitLines: [],
+              color: selectedRoomColor,
+              level: currentLevel
+            };
+            box.material.color.set(selectedRoomColor);
             levelContainers[levelIndex].add(box);
             rooms[levelIndex].push(box);
           }
@@ -485,6 +598,10 @@ window.addEventListener('load', () => {
       const newZ = Math.floor(point.z) + 0.5;
       selectedRoom.position.x = newX;
       selectedRoom.position.z = newZ;
+      // Sync outline mesh position if present
+      if (selectedRoom.outlineMesh) {
+        selectedRoom.outlineMesh.position.copy(selectedRoom.position);
+      }
 
       // Update any exit lines connected to this room
       if (selectedRoom.userData?.exitLines) {
@@ -525,6 +642,25 @@ window.addEventListener('load', () => {
   });
 
   function switchLevel(newLevel) {
+    // Clear selected room and remove any highlight outline
+    if (selectedRoom) {
+      if (selectedRoom.outlineMesh) {
+        levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+        selectedRoom.outlineMesh.geometry.dispose();
+        selectedRoom.outlineMesh.material.dispose();
+        delete selectedRoom.outlineMesh;
+      }
+      selectedRoom = null;
+    }
+    // Clear any highlighted room from all levels
+    for (const level of rooms) {
+      for (const room of level) {
+        if (room.material?.emissive) {
+          room.material.emissive.setHex(0x000000);
+        }
+      }
+    }
+
     currentLevel = newLevel;
     levelContainers.forEach((g, i) => {
       const levelIndex = i - LEVEL_OFFSET;
@@ -618,34 +754,33 @@ window.addEventListener('load', () => {
   });
 
   document.getElementById('exportJsonBtn')?.addEventListener('click', () => {
-    const data = [];
+    // Store all links in both directions, but avoid duplicates
+    const roomsData = [];
     rooms.forEach((level, levelIndex) => {
       level.forEach(room => {
         const pos = room.position;
-        // Only store forward exits (avoid reverse duplicates)
-        const links = Object.values(room.userData.exits || {}).filter(link => {
-          const fromId = room.userData.id;
-          const toId = link.room.userData.id;
-          return fromId < toId; // only store forward link
-        }).map(link => {
-          return {
-            direction: parseInt(link.direction),
-            toRoomId: link.room.userData.id
-          };
-        });
-        data.push({
+        // Collect all exits as {dir: roomId}
+        const exits = {};
+        for (const [dir, link] of Object.entries(room.userData.exits || {})) {
+          const toRoom = link.room;
+          if (toRoom && typeof toRoom.userData?.id !== 'undefined') {
+            exits[dir] = toRoom.userData.id;
+          }
+        }
+        roomsData.push({
           id: room.userData.id,
           name: room.userData.name || '',
           desc: room.userData.desc || '',
           level: levelIndex - LEVEL_OFFSET,
           x: pos.x,
           z: pos.z,
-          links
+          exits,
+          color: room.userData.color || '#8888ff',
         });
       });
     });
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(roomsData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -808,6 +943,8 @@ ${vnumMin} ${vnumMax}
           const exit = room.userData.exits[key];
           const direction = exit.direction;
           const toRoom = exit.room;
+          // Only export if toRoom exists and has a valid id
+          if (!toRoom || typeof toRoom.userData?.id === 'undefined') continue;
           // Some formats want only one exit per direction
           if (typeof direction !== "undefined" && direction !== null) {
             if (format.uniqueExitDirections) {
@@ -979,14 +1116,22 @@ ${exitsStr}${extrasStr}End
 
     const data = JSON.parse(json);
     const idToRoom = new Map();
+    // First pass: create all rooms
     data.forEach(entry => {
       const levelIndex = entry.level + LEVEL_OFFSET;
+      const color = entry.color || '#8888ff';
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x000000 })
+        new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
       );
       box.position.set(entry.x, 0.5, entry.z);
-      box.userData = { id: entry.id, exits: {}, exitLines: [] };
+      box.userData = {
+        id: entry.id,
+        exits: {},
+        exitLines: [],
+        color,
+        level: entry.level || 0
+      };
       usedVnums.add(entry.id);
       if (entry.id > lastAssignedVnum) {
         lastAssignedVnum = entry.id;
@@ -995,34 +1140,51 @@ ${exitsStr}${extrasStr}End
       rooms[levelIndex].push(box);
       idToRoom.set(entry.id, box);
     });
-    // Restore exits from room.links in both directions
-    function createLink(fromRoom, toRoom, direction) {
-      const fromPos = getRoomCenter(fromRoom);
-      const toPos = getRoomCenter(toRoom);
-      const line = createExitLine(fromPos, toPos, fromRoom, toRoom);
-      if (typeof direction !== "undefined" && direction !== null) {
-        line.userData.direction = direction;
+    // Second pass: connect exits bidirectionally
+    function getOppositeDirection(dir) {
+      // For numeric directions as string or number: 0=N,1=E,2=S,3=W,4=U,5=D
+      const d = typeof dir === "string" && !isNaN(dir) ? parseInt(dir) : dir;
+      if (typeof d === "number") {
+        if (d === 0) return 2;
+        if (d === 1) return 3;
+        if (d === 2) return 0;
+        if (d === 3) return 1;
+        if (d === 4) return 5;
+        if (d === 5) return 4;
       }
-      fromRoom.userData.exitLines.push(line);
-      toRoom.userData.exitLines.push(line);
-      // Store exit info
-      // Compute vector key for this direction (for full compatibility, but here just store by direction)
-      if (!fromRoom.userData.exits) fromRoom.userData.exits = {};
-      fromRoom.userData.exits[direction] = { room: toRoom, direction };
+      // For vector keys (e.g. "1,0,0"), reverse sign
+      if (typeof dir === "string" && dir.split(',').length === 3) {
+        return dir.split(',').map(n => -parseInt(n)).join(',');
+      }
+      return dir;
     }
-    data.forEach(room => {
-      const newRoom = idToRoom.get(room.id);
-      if (room.links) {
-        for (const link of room.links) {
-          const toRoom = idToRoom.get(link.toRoomId);
-          if (!toRoom) continue;
-
-          // Create forward link
-          createLink(newRoom, toRoom, parseInt(link.direction));
-
-          // Create reverse link
-          const reverseDir = (parseInt(link.direction) + 3) % 6;
-          createLink(toRoom, newRoom, reverseDir);
+    // Helper to create line/exit between rooms if not already present
+    function createLinkIfNotExists(fromRoom, toRoom, dir) {
+      if (!fromRoom.userData.exits[dir]) {
+        const fromPos = getRoomCenter(fromRoom);
+        const toPos = getRoomCenter(toRoom);
+        const line = createExitLine(fromPos, toPos, fromRoom, toRoom);
+        if (typeof dir !== "undefined" && dir !== null) {
+          line.userData.direction = dir;
+        }
+        fromRoom.userData.exitLines.push(line);
+        toRoom.userData.exitLines.push(line);
+        fromRoom.userData.exits[dir] = { room: toRoom, direction: typeof dir === "string" && !isNaN(dir) ? parseInt(dir) : dir };
+      }
+    }
+    // For each room, for each exit, link both directions
+    data.forEach(entry => {
+      const fromRoom = idToRoom.get(entry.id);
+      if (!fromRoom || !entry.exits) return;
+      for (const [dir, toId] of Object.entries(entry.exits)) {
+        const toRoom = idToRoom.get(toId);
+        if (!toRoom) continue;
+        // Create forward link if not exists
+        createLinkIfNotExists(fromRoom, toRoom, dir);
+        // Create reverse link if not exists
+        const opposite = getOppositeDirection(dir);
+        if (!toRoom.userData.exits[opposite]) {
+          toRoom.userData.exits[opposite] = { room: fromRoom, direction: typeof opposite === "string" && !isNaN(opposite) ? parseInt(opposite) : opposite };
         }
       }
     });

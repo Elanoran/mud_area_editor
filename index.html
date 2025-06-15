@@ -9,7 +9,7 @@
   <div class="level-controls">
     <button id="upButton" class="ui-element">▲</button>
     <button id="downButton" class="ui-element">▼</button>
-    <select id="levelSelector" style="width: 124px;" class="ui-element"></select>
+    <select id="levelSelector" style="width: 174px;" class="ui-element"></select>
   </div>
 
   <div class="file-controls">
@@ -36,7 +36,21 @@
     </label>
   </div>
   <div class="field-group">
-    <hr style="border: none; border-top: 1px solid #cccccc38; margin: 10px 0;">
+    <label>Room Color:<br>
+      <div id="roomColorOptions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+        <button class="room-color-option" data-color="#e74c3c" style="background:#e74c3c;" title="Red"></button>
+        <button class="room-color-option" data-color="#f39c12" style="background:#f39c12;" title="Orange"></button>
+        <button class="room-color-option" data-color="#f1c40f" style="background:#f1c40f;" title="Yellow"></button>
+        <button class="room-color-option" data-color="#2ecc71" style="background:#2ecc71;" title="Green"></button>
+        <button class="room-color-option" data-color="#3498db" style="background:#3498db;" title="Blue"></button>
+        <button class="room-color-option" data-color="#9b59b6" style="background:#9b59b6;" title="Purple"></button>
+        <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
+        <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
+      </div>
+    </label>
+  </div>
+  <div class="field-group">
+    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0;">
     <label>Area Name:<br>
       <input type="text" id="areaName" class="full-width">
     </label>
@@ -59,7 +73,7 @@
     </div>
   </div>
   <div class="field-group">
-    <hr style="border: none; border-top: 1px solid #cccccc38; margin: 10px 0;">
+    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0;">
     <label>VNUM:<br>
       <input type="number" id="roomVnum" class="full-width">
     </label>
@@ -87,6 +101,7 @@
       <li><span class="key">Shift</span> + <span class="key">Left-click</span> another room to create or remove a directional link between them.</li>
       <li>Use the inputs on the left to edit room VNUM, name, and description.</li>
       <li>Use the dropdowns and file buttons to import/export your layout.</li>
+      <li>Pick a color below the Grid section to define the color of new rooms, or recolor a selected room.</li>
     </ul>
   </div>
   <script type="module" src="editor.js" defer></script>
