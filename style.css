@@ -118,18 +118,32 @@ canvas {
   flex-direction: column;
 }
 
+/* #area-info dynamic height for tabs/toggle */
 #area-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  margin-top: 40px;
-  background-color: #3a3a4dae;
   position: fixed;
-  height: calc(100% - 100px);
+  top: 50px;
+  height:335px;
   width: 250px;
+  background-color: #3a3a4dae;
   padding: 10px;
-  overflow-y: auto;
+  transition: height 0.3s ease;
+  overflow: hidden;
+}
+
+#area-info.expanded-area {
+  height: 335px; /* Adjust based on Area tab content height */
+}
+
+#area-info.expanded-room {
+  height: 660px; /* Adjust based on Room tab content height */
+}
+
+#area-info.collapsed {
+  height: 160px; /* Only show top part when collapsed */
 }
 
 #area-info label {
@@ -144,6 +158,7 @@ canvas {
   background-color: #3a3a4d;
   color: #ffffff;
   margin-top: 5px;
+  margin-bottom: 10px;
 }
 
 #area-info input:focus {
@@ -154,6 +169,7 @@ canvas {
 #area-info > div:not(.vnum-row) {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 #area-info:hover {
@@ -203,9 +219,8 @@ canvas {
 }
 
 #area-info textarea.full-width {
-  resize: vertical;
-  max-height: 250px;
-  min-height: 200px;
+  resize: none;
+  height: 100px;
   width: 100%;
   box-sizing: border-box;
   overflow: auto;
@@ -350,3 +365,55 @@ input[type="number"]::part(decrement) {
 }
 
 /* 4d4d94 */
+
+#areaInfoContainer {
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+#areaInfoContainer.hidden {
+  max-height: 0;
+}
+
+.tab-header {
+  display: flex;
+  gap: 6px;
+  flex-grow: 1;
+}
+
+.tab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-direction: row !important;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  background-color: #3a3a4d;
+  color: white;
+  border: 1px solid #4d4d94;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tab-button.active {
+  background-color: #4d4d94;
+  font-weight: bold;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+#toggleAreaInfoBtn {
+  height: 22px;
+  min-width: 22px;
+}

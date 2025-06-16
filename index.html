@@ -15,10 +15,10 @@
   <div class="file-controls">
     <button id="exportFormatBtn" class="ui-element">Export As</button>
     <select id="exportFormat" class="ui-element">
-      <option value="ROM" selected>ROM</option>
+      <option value="JSON" selected>JSON</option>
+      <option value="ROM">ROM</option>
       <option value="AW">AW</option>
     </select>
-    <button id="exportJsonBtn" class="ui-element">Export JSON</button>
     <button id="importJsonBtn" class="ui-element">Import JSON</button>
     <input type="file" id="importInput" accept=".json" style="display:none">
     <button id="helpBtn" class="ui-element">Help</button>
@@ -47,45 +47,63 @@
       <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
       <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
     </div>
+    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
   </div>
-  <div class="field-group">
-    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0;">
-    <label>Area Name:<br>
-      <input type="text" id="areaName" class="full-width">
-    </label>
-  </div>
-  <div class="field-group">
-    <label>Filename:<br>
-      <input type="text" id="filename" class="full-width">
-    </label>
-  </div>
-  <div class="vnum-row">
-    <div class="vnum-field">
-      <label>VNUM Min:<br>
-        <input type="number" id="vnumMin" class="full-width">
-      </label>
-    </div>
-    <div class="vnum-field">
-      <label>VNUM Max:<br>
-        <input type="number" id="vnumMax" class="full-width">
-      </label>
+  <div class="tab-row">
+    <div class="tab-header" style="flex-grow: 1;">
+      <button class="tab-button active" data-tab="areaTab">Area</button>
+      <button class="tab-button" data-tab="roomTab">Room</button>
     </div>
   </div>
-  <div class="field-group">
-    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0;">
-    <label>VNUM:<br>
-      <input type="number" id="roomVnum" class="full-width">
-    </label>
-  </div>
-  <div class="field-group">
-    <label>Name:<br>
-      <input type="text" id="roomName" class="full-width">
-    </label>
-  </div>
-  <div class="field-group">
-    <label>Description:<br>
-      <textarea id="roomDesc" class="full-width" rows="4"></textarea>
-    </label>
+
+  <div id="areaInfoContainer">
+    <div id="areaTab" class="tab-content active">
+      <div class="field-group">
+        <label>Area Name:<br>
+          <input type="text" id="areaName" class="full-width">
+        </label>
+      </div>
+      <div class="field-group">
+        <label>Filename:<br>
+          <input type="text" id="filename" class="full-width">
+        </label>
+      </div>
+      <div class="vnum-row">
+        <div class="vnum-field">
+          <label>VNUM Min:<br>
+            <input type="number" id="vnumMin" class="full-width">
+          </label>
+        </div>
+        <div class="vnum-field">
+          <label>VNUM Max:<br>
+            <input type="number" id="vnumMax" class="full-width">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div id="roomTab" class="tab-content">
+      <div class="field-group">
+        <label>
+          VNUM:
+          <span id="roomVnumCoords" style="margin-left: 10px; font-weight: normal; color: #ccc;"></span><br>
+          <input type="number" id="roomVnum" class="full-width">
+        </label>
+      </div>
+      <div class="field-group">
+        <label>Name:<br>
+          <input type="text" id="roomName" class="full-width">
+        </label>
+      </div>
+      <div class="field-group">
+        <label>Description:<br>
+          <textarea id="roomDesc" class="full-width" rows="4"></textarea>
+        </label>
+      </div>
+      <div class="field-group">
+        <label>Exits:</label>
+        <ul id="roomExitsList" class="full-width" style="margin-top: 6px; padding-left: 20px;"></ul>
+      </div>
+    </div>
   </div>
 </div>
   <div id="helpPopup" class="ui-element" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#333; padding:20px; border:1px solid #888; z-index:1000; color:white;">

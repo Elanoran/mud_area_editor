@@ -5,7 +5,18 @@
       "room": "#%ROOM_VNUM%\n%ROOM_NAME%~\n%ROOM_DESC%\n~\n%FLAGS% %SECTOR% %UNKNOWN%\n%EXITS%%EXTRAS%S\n",
       "exit": "D%DIRECTION%\n%DOOR_DESC%~\n%KEYWORDS%~\n%FLAGS% %KEY% %TO_VNUM%\n",
       "extra": "E\n%KEYWORDS%~\n%EXTRA_DESC%~\n",
-      "dirLabels": ["North", "East", "South", "West", "Up", "Down"]
+      "dirLabels": [
+        "North",
+        "East",
+        "South",
+        "West",
+        "Up",
+        "Down",
+        "Northeast",
+        "Northwest",
+        "Southeast",
+        "Southwest"
+      ]
     },
     "AW": {
       "area": "#AREADATA\nName %AREA_NAME%~\nBuilders none~\nVNUMs %VNUM_MIN% %VNUM_MAX%\nCredits { NONE} Elan     AreaEditor~\nSecurity 9\nFlags 0\nEnd\n\n#MOBDATA\n#0\n\n#OBJDATA\n#0\n\n#ROOMDATA\n%ROOMS%#0\n\n#RESETS\nS\n\n#MOBPROGS\n#0\n\n#OBJPROGS\n#0\n\n#ROOMPROGS\n#0\n\n#$\n",

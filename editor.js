@@ -1,7 +1,123 @@
+// --- Unified direction definitions ---
+const DIRECTIONS = [
+  { key: 'n',  name: 'North',     vector: '0,0,-1', index: 0 },
+  { key: 'e',  name: 'East',      vector: '1,0,0',  index: 1 },
+  { key: 's',  name: 'South',     vector: '0,0,1',  index: 2 },
+  { key: 'w',  name: 'West',      vector: '-1,0,0', index: 3 },
+  { key: 'u',  name: 'Up',        vector: '0,1,0',  index: 4 },
+  { key: 'd',  name: 'Down',      vector: '0,-1,0', index: 5 },
+  { key: 'ne', name: 'Northeast', vector: '1,0,-1', index: 6 },
+  { key: 'nw', name: 'Northwest', vector: '-1,0,-1', index: 7 },
+  { key: 'se', name: 'Southeast', vector: '1,0,1',  index: 8 },
+  { key: 'sw', name: 'Southwest', vector: '-1,0,1', index: 9 }
+];
+
+const dirKeyToIndex    = {};
+const dirKeyToName     = {};
+const dirVectorToIndex = {};
+const dirIndexToName   = {};
+const dirIndexToVector = {};
+DIRECTIONS.forEach(d => {
+  dirKeyToIndex[d.key]       = d.index;
+  dirKeyToName[d.key]        = d.name;
+  dirVectorToIndex[d.vector] = d.index;
+  dirIndexToName[d.index]    = d.name;
+  dirIndexToVector[d.index]  = d.vector;
+});
+
+function getDirectionName(dir) {
+  if (dirVectorToIndex[dir] !== undefined) return dirIndexToName[dirVectorToIndex[dir]];
+  if (dirKeyToIndex[dir]    !== undefined) return dirKeyToName[dir];
+  const idx = parseInt(dir);
+  if (!isNaN(idx) && dirIndexToName[idx]) return dirIndexToName[idx];
+  return dir;
+}
+
+// --- Global utility to update room info in UI ---
+if (typeof window.updateRoomInfo !== "function") {
+  window.updateRoomInfo = function updateRoomInfo(room) {
+    if (!room || !room.id) return;
+    const coordField = document.getElementById('roomVnumCoords');
+    if (coordField) {
+      coordField.value = `(${room.x.toFixed(1)}, ${room.z.toFixed(1)}, ${room.level})`;
+    }
+
+    const exitsList = document.getElementById('roomExitsList');
+    if (exitsList) {
+      exitsList.innerHTML = '';
+
+      if (room.exits) {
+        for (const [dirKey, targetId] of Object.entries(room.exits)) {
+          const li = document.createElement('li');
+          const label = getDirectionName(dirKey);
+          li.textContent = `${label} → Room ${targetId}`;
+          exitsList.appendChild(li);
+        }
+      }
+    }
+  }
+}
 import * as THREE from 'https://esm.sh/three@0.157.0';
 import { OrbitControls } from 'https://esm.sh/three@0.157.0/examples/jsm/controls/OrbitControls.js';
 
 window.addEventListener('load', () => {
+  // --- Direction constants ---
+  const toggleBtn = document.getElementById('toggleAreaInfoBtn');
+  const areaInfoContainer = document.getElementById('areaInfoContainer');
+
+  if (toggleBtn && areaInfoContainer) {
+    toggleBtn.addEventListener('click', () => {
+      areaInfoContainer.classList.toggle('hidden');
+      toggleBtn.textContent = areaInfoContainer.classList.contains('hidden') ? '+' : '-';
+      // --- Dynamic height logic for #area-info ---
+      const areaInfo = document.getElementById('area-info');
+      if (areaInfo) {
+        areaInfo.classList.remove('expanded-area', 'expanded-room', 'collapsed');
+        if (areaInfoContainer.classList.contains('hidden')) {
+          areaInfo.classList.add('collapsed');
+        } else {
+          const activeTab = document.querySelector('.tab-button.active')?.dataset.tab;
+          if (activeTab === 'roomTab') {
+            areaInfo.classList.add('expanded-room');
+          } else {
+            areaInfo.classList.add('expanded-area');
+          }
+        }
+      }
+    });
+  }
+  // --- Tab switching logic ---
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetId = button.dataset.tab;
+
+      const areaInfoContainer = document.getElementById('areaInfoContainer');
+      const areaInfo = document.getElementById('area-info');
+      const isAlreadyActive = button.classList.contains('active');
+      const isHidden = areaInfoContainer.classList.contains('hidden');
+
+      // Toggle collapse if already active and visible
+      if (isAlreadyActive && !isHidden) {
+        areaInfoContainer.classList.add('hidden');
+        areaInfo?.classList.remove('expanded-area', 'expanded-room');
+        areaInfo?.classList.add('collapsed');
+        return;
+      }
+
+      // Activate the tab and show areaInfoContainer
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById(targetId)?.classList.add('active');
+
+      areaInfoContainer.classList.remove('hidden');
+      areaInfo?.classList.remove('collapsed', 'expanded-area', 'expanded-room');
+      areaInfo?.classList.add(targetId === 'roomTab' ? 'expanded-room' : 'expanded-area');
+    });
+  });
   let formatsData = {};
   let formats = {};
 
@@ -165,7 +281,8 @@ window.addEventListener('load', () => {
   // interaction
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
-  const rooms = Array.from({ length: MAX_LEVELS }, () => []);
+  window.rooms = Array.from({ length: MAX_LEVELS }, () => []);
+  let rooms = window.rooms;
 
   let selectedFace = null;
   let selectedRoom = null;
@@ -280,7 +397,7 @@ window.addEventListener('load', () => {
             const index = rooms[current].indexOf(room);
             if (index !== -1 && room.parent === levelContainers[current]) {
               // Remove exits pointing to or from this room
-              room.userData.exitLines.forEach(line => {
+              room.userData.exitLinks.forEach(line => {
                 levelContainers.forEach(container => container.remove(line));
               });
               rooms.forEach(level => {
@@ -347,11 +464,43 @@ window.addEventListener('load', () => {
             // Populate the VNUM and other fields when a room is selected
             if (selectedRoom) {
               const vnumField = document.getElementById('roomVnum');
+              const vnumCoordsSpan = document.getElementById('roomVnumCoords');
               const nameField = document.getElementById('roomName');
               const descField = document.getElementById('roomDesc');
               if (vnumField) vnumField.value = selectedRoom.userData.id ?? '';
               if (nameField) nameField.value = selectedRoom.userData.name ?? '';
               if (descField) descField.value = selectedRoom.userData.desc ?? '';
+              if (vnumCoordsSpan) {
+                const x = selectedRoom.position?.x ?? '?';
+                const z = selectedRoom.position?.z ?? '?';
+                const level = selectedRoom.userData?.level ?? '?';
+                vnumCoordsSpan.textContent = `(${x}, ${z}, ${level})`;
+              }
+
+              // --- Update exits list UI (human-readable direction names) ---
+              const exitsList = document.getElementById("roomExitsList");
+              if (exitsList) {
+                exitsList.innerHTML = "";
+                let room = selectedRoom;
+                let exits = room.exits || (room.userData && room.userData.exits);
+                if (exits) {
+                  for (const [dir, targetId] of Object.entries(exits)) {
+                    let displayTarget = targetId;
+                    // If value is an object, try to extract id
+                    if (typeof targetId === "object" && targetId !== null) {
+                      if (typeof targetId === "object" && "room" in targetId && targetId.room && typeof targetId.room.userData?.id !== "undefined") {
+                        displayTarget = targetId.room.userData.id;
+                      } else if ("id" in targetId) {
+                        displayTarget = targetId.id;
+                      }
+                    }
+                    const direction = getDirectionName(dir);
+                    const li = document.createElement("li");
+                    li.textContent = `${direction} to ${displayTarget}`;
+                    exitsList.appendChild(li);
+                  }
+                }
+              }
             }
             // Create new outline mesh
             const outlineMaterial = new THREE.MeshBasicMaterial({
@@ -386,18 +535,31 @@ window.addEventListener('load', () => {
           const normalized = directionVec.clone().normalize();
           const step = new THREE.Vector3(Math.round(normalized.x), Math.round(normalized.y), Math.round(normalized.z));
 
-          // Only allow cardinal directions (no diagonal)
-          if (Math.abs(step.x) + Math.abs(step.y) + Math.abs(step.z) !== 1) {
-            from.material.emissive = new THREE.Color(0x000000);
-            selectedFace = null;
-            // Ensure highlight and selection are cleared after failed link attempt
-            if (selectedRoom) {
-              const mat = selectedRoom.material;
-              if (mat && 'emissive' in mat) {
-                mat.emissive.setHex(0x000000);
-              }
-              selectedRoom = null;
+          // Allow linking in all 10 directions (including diagonals)
+          const allowedSteps = [
+            [0, 0, -1], // n
+            [1, 0, 0],  // e
+            [0, 0, 1],  // s
+            [-1, 0, 0], // w
+            [0, 1, 0],  // u
+            [0, -1, 0], // d
+            [1, 0, -1], // ne
+            [-1, 0, -1], // nw
+            [1, 0, 1], // se
+            [-1, 0, 1] // sw
+          ];
+          const valid = allowedSteps.some(([x, y, z]) =>
+            step.x === x && step.y === y && step.z === z
+          );
+          if (!valid) {
+            if (selectedRoom?.outlineMesh) {
+              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+              selectedRoom.outlineMesh.geometry.dispose();
+              selectedRoom.outlineMesh.material.dispose();
+              delete selectedRoom.outlineMesh;
             }
+            selectedFace = null;
+            selectedRoom = null;
             return;
           }
 
@@ -415,7 +577,7 @@ window.addEventListener('load', () => {
           const toKey = step.clone().negate().toArray().toString();
           if (from.userData.exits[fromKey] && to.userData.exits[toKey]) {
             // Remove the existing link
-            const exitLine = from.userData.exitLines.find(line => {
+            const exitLine = from.userData.exitLinks.find(line => {
               const pos = line.geometry.attributes.position.array;
               return (
                 (Math.abs(pos[0] - fromPos.x) < 0.1 && Math.abs(pos[2] - fromPos.z) < 0.1 &&
@@ -426,8 +588,8 @@ window.addEventListener('load', () => {
             });
             if (exitLine) {
               levelContainers.forEach(container => container.remove(exitLine));
-              from.userData.exitLines = from.userData.exitLines.filter(l => l !== exitLine);
-              to.userData.exitLines = to.userData.exitLines.filter(l => l !== exitLine);
+              from.userData.exitLinks = from.userData.exitLinks.filter(l => l !== exitLine);
+              to.userData.exitLinks = to.userData.exitLinks.filter(l => l !== exitLine);
             }
             delete from.userData.exits[fromKey];
             delete to.userData.exits[toKey];
@@ -473,8 +635,8 @@ window.addEventListener('load', () => {
             if (direction !== null) {
               line.userData.direction = direction;
             }
-            from.userData.exitLines.push(line);
-            to.userData.exitLines.push(line);
+            from.userData.exitLinks.push(line);
+            to.userData.exitLinks.push(line);
             from.userData.exits[fromKey] = { room: to, direction };
             // --- Proper reverse direction logic for 6 directions ---
             let reverseDirection = null;
@@ -489,6 +651,25 @@ window.addEventListener('load', () => {
             to.userData.exits[toKey] = { room: from, direction: reverseDirection };
             // Draw links (if any additional logic is needed, e.g., updating visuals)
             // (If drawLinks() is a function, it would be called here. If not, ignore this comment.)
+
+            // --- Add separate logic to store exits directionally for export consistency ---
+            // Only after visual link, maintain exits on both rooms as offset->id
+            // (This does not interfere with userData.exits used for visuals)
+            // --- Safely calculate and assign exits only if coordinates are valid ---
+            const dx = room.x - selectedRoom.x;
+            const dy = (room.level || 0) - (selectedRoom.level || 0);
+            const dz = room.z - selectedRoom.z;
+
+            if (!isNaN(dx) && !isNaN(dy) && !isNaN(dz)) {
+              const offsetKey = `${dx},${dy},${dz}`;
+              const reverseOffsetKey = `${-dx},${-dy},${-dz}`;
+
+              if (!selectedRoom.exits) selectedRoom.exits = {};
+              if (!room.exits) room.exits = {};
+
+              selectedRoom.exits[offsetKey] = room.id;
+              room.exits[reverseOffsetKey] = selectedRoom.id;
+            }
           }
           selectedFace = null;
           // --- Clear highlight and selectedRoom after link creation ---
@@ -529,7 +710,7 @@ window.addEventListener('load', () => {
           if (existingIndex !== -1) {
             // Remove room and its links
             const room = rooms[levelIndex][existingIndex];
-            room.userData.exitLines.forEach(line => {
+            room.userData.exitLinks.forEach(line => {
               levelContainers.forEach(container => container.remove(line));
             });
             // Clean up exits from other rooms pointing to this one
@@ -577,7 +758,7 @@ window.addEventListener('load', () => {
             box.userData = {
               id: vnum,
               exits: {},
-              exitLines: [],
+              exitLinks: [],
               color: color,
               level: currentLevel
             };
@@ -591,11 +772,80 @@ window.addEventListener('load', () => {
 
   window.addEventListener('pointerdown', onPointerDown);
 
+  // --- Utility: get direction string between two rooms, for recalc ---
+  // Updated for correct direction vectors and a 135° compass rotation
+  function getDirectionBetween(from, to) {
+    const dx = to.x - from.x;
+    const dz = to.z - from.z;
+    const angle = (Math.atan2(dz, dx) * 180 / Math.PI + 360) % 360;
+
+    if (angle >= 337.5 || angle < 22.5) return 'east';
+    if (angle >= 22.5 && angle < 67.5) return 'southeast';
+    if (angle >= 67.5 && angle < 112.5) return 'south';
+    if (angle >= 112.5 && angle < 157.5) return 'southwest';
+    if (angle >= 157.5 && angle < 202.5) return 'west';
+    if (angle >= 202.5 && angle < 247.5) return 'northwest';
+    if (angle >= 247.5 && angle < 292.5) return 'north';
+    if (angle >= 292.5 && angle < 337.5) return 'northeast';
+
+    return null;
+  }
+
+  // --- Utility: get reverse direction string ---
+  function getReverseDirection(dir) {
+    const opposites = {
+      n: "s", s: "n", e: "w", w: "e",
+      u: "d", d: "u",
+      ne: "sw", sw: "ne", nw: "se", se: "nw"
+    };
+    return opposites[dir] || dir;
+  }
+
+  // --- Recalculate all exits based on room positions, but only for rooms with visual links ---
+  function recalculateExits() {
+    // Build flat map of all rooms by id and positions
+    const allRooms = [];
+    for (let level of rooms) {
+      for (let r of level) {
+        // Ensure .x, .z, .level are present
+        r.x = r.position.x;
+        r.z = r.position.z;
+        r.level = r.userData.level || 0;
+        allRooms.push(r);
+      }
+    }
+    // Clear all .exits objects in place
+    for (const room of allRooms) {
+      room.exits = {};
+    }
+
+    for (const roomA of allRooms) {
+      for (const roomB of allRooms) {
+        if (roomA === roomB) continue;
+
+        // Only assign exits if there is a visual link (exitLine) between roomA and roomB
+        const hasLink = roomA.userData.exitLinks?.some(line =>
+          (line.userData.fromRoom === roomA && line.userData.toRoom === roomB) ||
+          (line.userData.fromRoom === roomB && line.userData.toRoom === roomA)
+        );
+        if (!hasLink) continue;
+
+        const dir = getDirectionBetween(roomA, roomB);
+        if (dir && !(dir in roomA.exits)) {
+          // Use userData?.id if possible, fallback to .id
+          roomA.exits[dir] = parseInt(roomB.userData?.id ?? roomB.id, 10);
+        }
+      }
+    }
+  }
+
   window.addEventListener('pointermove', (event) => {
     // Only disable OrbitControls rotation while dragging and a node is selected
     controls.enableRotate = !(isDragging && selectedRoom);
     if (!isDragging || !selectedRoom) return;
-    if (document.getElementById('gridLock')?.checked) return;
+    const gridLockElem = document.getElementById('gridLock');
+    const gridLockChecked = gridLockElem?.checked;
+    if (gridLockChecked) return;
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
@@ -606,39 +856,97 @@ window.addEventListener('load', () => {
       const newZ = Math.floor(point.z) + 0.5;
       selectedRoom.position.x = newX;
       selectedRoom.position.z = newZ;
+      // --- Sync numeric properties for recalculateExits() ---
+      selectedRoom.x = selectedRoom.position.x;
+      selectedRoom.z = selectedRoom.position.z;
+      selectedRoom.level = selectedRoom.userData.level || 0;
       // Sync outline mesh position if present
       if (selectedRoom.outlineMesh) {
         selectedRoom.outlineMesh.position.copy(selectedRoom.position);
       }
 
-      // Update any exit lines connected to this room
-      if (selectedRoom.userData?.exitLines) {
-        selectedRoom.userData.exitLines.forEach(line => {
-          const pos = line.geometry.attributes.position.array;
+      // --- Update coords display if the moved room is the selected one ---
+      if (selectedRoom) {
+        const vnumCoordsSpan = document.getElementById('roomVnumCoords');
+        if (vnumCoordsSpan) {
+          const x = selectedRoom.position.x.toFixed(1);
+          const z = selectedRoom.position.z.toFixed(1);
+          const level = selectedRoom.userData?.level ?? '?';
+          vnumCoordsSpan.textContent = `(${x}, ${z}, ${level})`;
+        }
+      }
 
+      // Update any exit lines connected to this room
+      if (selectedRoom.userData?.exitLinks) {
+        selectedRoom.userData.exitLinks.forEach(line => {
+          const pos = line.geometry.attributes.position.array;
           const from = line.userData.fromRoom;
           const to = line.userData.toRoom;
-
           const fromPos = getRoomCenter(from);
           const toPos = getRoomCenter(to);
-
           pos[0] = fromPos.x;
           pos[1] = fromPos.y;
           pos[2] = fromPos.z;
           pos[3] = toPos.x;
           pos[4] = toPos.y;
           pos[5] = toPos.z;
-
           line.geometry.attributes.position.needsUpdate = true;
         });
       }
+      // --- Recalculate all exits based on room positions ---
+      if (!gridLockChecked) {
+        recalculateExits();
+        if (selectedRoom) updateRoomInfo(selectedRoom);
+        // Draw links after recalculation and UI update
+        if (typeof drawLinks === 'function') {
+          drawLinks();
+        }
+      }
     }
   });
+
+  // --- Update a room's position and recalculate exits after the update ---
+  // Usage: updateRoomPosition(room, x, z, y = 0)
+  function updateRoomPosition(room, x, z, y = 0) {
+    // Update the room's internal position object first
+    room.position.x = x;
+    room.position.z = z;
+    room.position.y = y;
+
+    // Update the mesh position
+    room.mesh?.position?.set
+      ? room.mesh.position.set(x, y, z)
+      : room.position.set(x, y, z);
+
+    // Update label position if present
+    if (room.label) {
+      room.label.position.set(x, y + 0.4, z);
+    }
+
+    // Update internal data values (if present)
+    if (typeof roomData !== "undefined" && roomData[room.id]) {
+      roomData[room.id].x = x;
+      roomData[room.id].z = z;
+      roomData[room.id].level = y;
+    }
+
+    // Now recalculate exits after updating position values
+    recalculateExits();
+    // Update UI to reflect changes
+    if (typeof updateRoomInfo === "function") updateRoomInfo(room);
+  }
 
   window.addEventListener('pointerup', () => {
     isDragging = false;
     // Re-enable OrbitControls rotation after dragging
     controls.enableRotate = true;
+    recalculateExits();
+    if (typeof drawLinks === 'function') {
+      drawLinks();
+    }
+    if (selectedRoom) {
+      updateRoomInfo(selectedRoom);
+    }
   });
 
   window.addEventListener('keydown', (e) => {
@@ -765,44 +1073,53 @@ window.addEventListener('load', () => {
     switchLevel(parseInt(e.target.value));
   });
 
-  document.getElementById('exportJsonBtn')?.addEventListener('click', () => {
-    // Store all links in both directions, but avoid duplicates
-    const roomsData = [];
-    rooms.forEach((level, levelIndex) => {
-      level.forEach(room => {
-        const pos = room.position;
-        // Collect all exits as {dir: roomId}
-        const exits = {};
-        for (const [dir, link] of Object.entries(room.userData.exits || {})) {
-          const toRoom = link.room;
-          if (toRoom && typeof toRoom.userData?.id !== 'undefined') {
-            exits[dir] = toRoom.userData.id;
-          }
-        }
-        roomsData.push({
-          id: room.userData.id,
-          name: room.userData.name || '',
-          desc: room.userData.desc || '',
-          level: levelIndex - LEVEL_OFFSET,
-          x: pos.x,
-          z: pos.z,
-          exits,
-          color: room.userData.color || '#8888ff',
-        });
-      });
-    });
 
-    const blob = new Blob([JSON.stringify(roomsData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'map.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  // --- Direction vectors for use in export/import ---
 
   document.getElementById('exportFormatBtn')?.addEventListener('click', () => {
-    const formatName = document.getElementById('exportFormat')?.value || 'ROM';
+    const exportFormat = document.getElementById('exportFormat')?.value || 'JSON';
+    if (exportFormat === 'JSON') {
+      const roomsData = [];
+      rooms.forEach((level, levelIndex) => {
+        level.forEach(room => {
+          const pos = room.position;
+          // --- Export exits as a mapping from human-readable direction name to {to, link} ---
+          const exits = {};
+          if (room.userData.exits) {
+            for (const [dir, data] of Object.entries(room.userData.exits)) {
+              if (data.room && data.room.userData && typeof data.room.userData.id !== 'undefined') {
+                const readableDir = getDirectionName(dir);
+                // Add backward compatible structure: { to: id, link: dir }
+                exits[readableDir] = {
+                  to: data.room.userData.id,
+                  link: dir
+                };
+              }
+            }
+          }
+          // Remove exitLinks from export (do not include in JSON)
+          roomsData.push({
+            id: room.userData.id,
+            name: room.userData.name || '',
+            desc: room.userData.desc || '',
+            level: levelIndex - LEVEL_OFFSET,
+            x: pos.x,
+            z: pos.z,
+            exits,
+            color: room.userData.color || '#ffffff'
+          });
+        });
+      });
+      const blob = new Blob([JSON.stringify(roomsData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'map.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const formatName = exportFormat;
     const format = formats[formatName];
     if (!format) {
       alert(`Unknown format: ${formatName}`);
@@ -823,98 +1140,6 @@ window.addEventListener('load', () => {
     // Always include reverse exits for all formats
     const skipReverse = false;
 
-    // --- Special logic for ROM_FULL format ---
-    if (formatName === "ROM_FULL" && formats["ROM_FULL"]) {
-      // Build #AREA header block
-      // Header example:
-      // #AREA
-      // %FILENAME%.are~
-      // %AREA_NAME%~
-      // { %VNUM_MIN% %VNUM_MAX% } %BUILDERS%~
-      // %VNUM_MIN% %VNUM_MAX%
-      // ...
-      let header = '';
-      // Ensure areaHeader exists in formats["ROM_FULL"]
-      if (formats["ROM_FULL"].areaHeader) {
-        header = formats["ROM_FULL"].areaHeader
-          .replace('%FILENAME%', filename)
-          .replace('%AREA_NAME%', areaName)
-          .replace('%BUILDERS%', builders)
-          .replace('%VNUM_MIN%', vnumMin)
-          .replace('%VNUM_MAX%', vnumMax);
-      } else {
-        header = `#AREA
-${filename}.are~
-${areaName}~
-{ ${vnumMin} ${vnumMax} } ${builders}~
-${vnumMin} ${vnumMax}
-`;
-      }
-
-      // --- Build #ROOMS block ---
-      let roomsBlock = "#ROOMS\n";
-      // Gather all rooms, sorted by vnum
-      const allRooms = rooms.flat().slice().sort((a, b) => (a.userData.id || 0) - (b.userData.id || 0));
-      allRooms.forEach(room => {
-        // Default name and desc logic
-        const vnum = room.userData.id;
-        const name = (room.userData.name?.trim() ? room.userData.name.trim() : `Room ${vnum}`) + '~';
-        const desc = (room.userData.desc?.trim() ? room.userData.desc.trim() : `${vnum}`) + '\n~';
-        // Room header: vnum, name, desc, then flags line (always "0 0 0")
-        let lines = [];
-        lines.push(`#${vnum}`);
-        lines.push(name);
-        lines.push(desc);
-        lines.push("0 0 0");
-        // Exits
-        let exitsStr = '';
-        if (formats["ROM_FULL"].exit && room.userData.exits) {
-          // Output all exits (ROM expects all exits, not just forward)
-          for (const key in room.userData.exits) {
-            const exit = room.userData.exits[key];
-            const direction = exit.direction;
-            const toRoom = exit.room;
-            if (!toRoom) continue;
-            // Only output each exit once per direction
-            // For ROM, output all exits (no duplicate direction from same room)
-            if (typeof direction === "undefined" || direction === null) continue;
-            // Use exit format
-            exitsStr += formats["ROM_FULL"].exit
-              .replace('%DIRECTION%', direction)
-              .replace('%TO_VNUM%', toRoom.userData.id)
-              .replace('%KEY%', '-1')
-              .replace('%FLAGS%', '0')
-              .replace('%DOOR_DESC%', '')
-              .replace('%KEYWORDS%', '');
-          }
-        }
-        // Extra descriptions (empty for now)
-        let extraDescStr = '';
-        // End of room
-        roomsBlock += lines.join('\n') + '\n' + exitsStr + extraDescStr + 'S\n';
-      });
-      roomsBlock += "#0\n";
-
-      // --- Compose the full area file ---
-      let output = '';
-      output += header;
-      output += "#MOBILES\n#0\n";
-      output += "#OBJECTS\n#0\n";
-      output += roomsBlock;
-      output += "#RESETS\n#0\n";
-      output += "#SHOPS\n#0\n";
-      output += "#SPECIALS\n#0\n";
-      output += "#$\n";
-
-      const blob = new Blob([output], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename.endsWith('.are') ? filename : `${filename}.are`;
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
 
     // --- Generic export logic driven by formats.json templates ---
     // Helper: Replace placeholders in a template string with values from a data object
@@ -948,32 +1173,71 @@ ${vnumMin} ${vnumMax}
       const zone = room.userData.zone || '0';
       // Compose exits for this room
       let exitsStr = '';
-      if (exitTemplate && room.userData.exits) {
-        // To avoid duplicate exits for bidirectional links, use a Set for directions if needed
+      // --- Export logic for ROM/AW-style using direction indexes ---
+      if (exitTemplate && room.userData.exits && (format.romDirections || format.awDirections)) {
+        // Output only valid vector keys as per dirVectors
+        Object.entries(room.userData.exits || {}).forEach(([vectorKey, data]) => {
+          if (!data.room || typeof data.room.userData.id === 'undefined') return;
+          // Map vectorKey to direction index
+          let dirIndex = dirVectorToIndex[vectorKey];
+          if (typeof dirIndex !== 'number') return;
+          let exitData = {
+            DIRECTION: dirIndex,
+            TO_VNUM: data.room.userData.id,
+            KEY: '-1',
+            FLAGS: '0',
+            DOOR_DESC: '',
+            KEYWORDS: ''
+          };
+          if (format.romDirections) {
+            exitsStr += `D${dirIndex}\n~\n~\n0 ${data.room.userData.id} 0\n`;
+          } else if (format.awDirections) {
+            exitsStr += `Door ${dirIndex}\n0 ${data.room.userData.id}\n`;
+          } else {
+            if (format.exitDefaults) {
+              Object.assign(exitData, format.exitDefaults);
+            }
+            exitsStr += fillTemplate(exitTemplate, exitData);
+          }
+        });
+      } else if (exitTemplate && room.userData.exits) {
+        // Fallback: previous logic (non-ROM/AW), but map vector keys to direction numbers if needed
         const usedDirs = new Set();
         for (const key in room.userData.exits) {
           const exit = room.userData.exits[key];
-          const direction = exit.direction;
-          const toRoom = exit.room;
-          // Only export if toRoom exists and has a valid id
-          if (!toRoom || typeof toRoom.userData?.id === 'undefined') continue;
-          // Some formats want only one exit per direction
-          if (typeof direction !== "undefined" && direction !== null) {
-            if (format.uniqueExitDirections) {
-              if (usedDirs.has(direction)) continue;
-              usedDirs.add(direction);
+      // Determine numeric direction index from vector key or existing exit.direction
+      let dirNum = dirVectorToIndex[key];
+      if (exit.direction !== undefined && exit.direction !== null) {
+        if (typeof exit.direction === 'number') {
+          dirNum = exit.direction;
+        } else if (typeof exit.direction === 'string') {
+          // Try mapping a vector string or numeric string to an index
+          const idx = dirVectorToIndex[exit.direction];
+          if (idx !== undefined) {
+            dirNum = idx;
+          } else {
+            const parsed = parseInt(exit.direction, 10);
+            if (!isNaN(parsed)) {
+              dirNum = parsed;
             }
           }
-          // Compose exit data for template
+        }
+      }
+      if (dirNum === undefined || dirNum === null) continue;
+          const toRoom = exit.room;
+          if (!toRoom || typeof toRoom.userData?.id === 'undefined') continue;
+          if (format.uniqueExitDirections) {
+            if (usedDirs.has(dirNum)) continue;
+            usedDirs.add(dirNum);
+          }
           let exitData = {
-            DIRECTION: typeof direction !== "undefined" ? direction : '',
+            DIRECTION: dirNum,
             TO_VNUM: toRoom?.userData?.id ?? 0,
             KEY: '-1',
             FLAGS: '0',
             DOOR_DESC: '',
             KEYWORDS: ''
           };
-          // Allow format to override exit defaults
           if (format.exitDefaults) {
             Object.assign(exitData, format.exitDefaults);
           }
@@ -1002,14 +1266,12 @@ ${vnumMin} ${vnumMax}
         EXITS: exitsStr,
         EXTRAS: extrasStr
       };
-      // Allow format to override room defaults
       if (format.roomDefaults) {
         Object.assign(roomData, format.roomDefaults);
       }
       if (roomTemplate) {
         roomsStr += fillTemplate(roomTemplate, roomData);
       } else {
-        // Fallback: generic room block
         roomsStr += `#${vnum}
 Name   ${name}~
 Descr
@@ -1093,18 +1355,22 @@ ${exitsStr}${extrasStr}End
           .replace('%EXTRA_FLAGS%', '0'); // Placeholder
 
         let exits = '';
-        for (const key in room.userData.exits) {
-          const toRoom = room.userData.exits[key].room;
-          const direction = room.userData.exits[key].direction;
-          const exitStr = format.exit
-            .replace('%DIRECTION%', direction)
-            .replace('%TO_VNUM%', toRoom.userData.id)
-            .replace('%FLAGS%', '0') // Placeholder
-            .replace('%KEY%', '-1') // Placeholder
-            .replace('%DOOR_DESC%', '') // Placeholder
-            .replace('%KEYWORDS%', ''); // Placeholder
-          exits += exitStr;
-        }
+        // Remove vector-based key output for ROM-style export
+        Object.entries(room.userData.exits || {}).forEach(([dir, data]) => {
+          if (!data.room || typeof data.room.userData.id === 'undefined') return;
+          // Map direction to ROM index, including diagonals (normalize to lowercase)
+          let exitDir = dir;
+          if (!dirKeyToIndex.hasOwnProperty(exitDir.toLowerCase())) {
+            exitDir = getDirectionBetweenRooms(room, data.room);
+          }
+          const dirIndex = dirKeyToIndex[exitDir.toLowerCase()];
+          if (dirIndex === undefined) {
+            // Optionally log a warning:
+            // console.warn(`Skipping exit with invalid direction: ${exitDir}`);
+            return; // Skip invalid direction
+          }
+          exits += `D${dirIndex}\n~\n~\n0 ${data.room.userData.id} 0\n`;
+        });
 
         output += roomStr.replace('%EXITS%', exits);
       });
@@ -1119,16 +1385,20 @@ ${exitsStr}${extrasStr}End
   }
 
   function importMapData(json) {
-    // Clear current scene
+    // Clear current scene and rooms
     rooms.forEach((level, i) => {
       level.forEach(room => levelContainers[i].remove(room));
       rooms[i] = [];
     });
-    scene.children.filter(obj => obj.type === 'Line').forEach(line => scene.remove(line));
+    // Remove existing link lines
+    levelContainers[LEVEL_OFFSET].children
+      .filter(obj => obj.type === 'Line')
+      .forEach(line => levelContainers[LEVEL_OFFSET].remove(line));
 
     const data = JSON.parse(json);
     const idToRoom = new Map();
-    // First pass: create all rooms
+
+    // First pass: recreate all rooms
     data.forEach(entry => {
       const levelIndex = entry.level + LEVEL_OFFSET;
       const color = entry.color || '#cccccc';
@@ -1137,76 +1407,78 @@ ${exitsStr}${extrasStr}End
         new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
       );
       box.position.set(entry.x, 0.5, entry.z);
-      // Explicitly set material color and userData.color
-      box.material.color.set(color);
       box.userData = {
         id: entry.id,
         exits: {},
-        exitLines: [],
-        color: color,
-        level: entry.level || 0
+        color,
+        level: entry.level
       };
-      usedVnums.add(entry.id);
-      if (entry.id > lastAssignedVnum) {
-        lastAssignedVnum = entry.id;
-      }
       levelContainers[levelIndex].add(box);
       rooms[levelIndex].push(box);
       idToRoom.set(entry.id, box);
     });
-    // Second pass: connect exits bidirectionally
-    function getOppositeDirection(dir) {
-      // For numeric directions as string or number: 0=N,1=E,2=S,3=W,4=U,5=D
-      const d = typeof dir === "string" && !isNaN(dir) ? parseInt(dir) : dir;
-      if (typeof d === "number") {
-        if (d === 0) return 2;
-        if (d === 1) return 3;
-        if (d === 2) return 0;
-        if (d === 3) return 1;
-        if (d === 4) return 5;
-        if (d === 5) return 4;
-      }
-      // For vector keys (e.g. "1,0,0"), reverse sign
-      if (typeof dir === "string" && dir.split(',').length === 3) {
-        return dir.split(',').map(n => -parseInt(n)).join(',');
-      }
-      return dir;
-    }
-    // Helper to create line/exit between rooms if not already present
-    function createLinkIfNotExists(fromRoom, toRoom, dir) {
-      if (!fromRoom.userData.exits[dir]) {
+
+    // Second pass: link exits based on JSON export shape
+    data.forEach(entry => {
+      const fromRoom = idToRoom.get(entry.id);
+      if (!fromRoom) return;
+      for (const { to, link } of Object.values(entry.exits || {})) {
+        const toRoom = idToRoom.get(to);
+        if (!toRoom) continue;
         const fromPos = getRoomCenter(fromRoom);
         const toPos = getRoomCenter(toRoom);
         const line = createExitLine(fromPos, toPos, fromRoom, toRoom);
-        if (typeof dir !== "undefined" && dir !== null) {
-          line.userData.direction = dir;
-        }
-        fromRoom.userData.exitLines.push(line);
-        toRoom.userData.exitLines.push(line);
-        fromRoom.userData.exits[dir] = { room: toRoom, direction: typeof dir === "string" && !isNaN(dir) ? parseInt(dir) : dir };
-      }
-    }
-    // For each room, for each exit, link both directions
-    data.forEach(entry => {
-      const fromRoom = idToRoom.get(entry.id);
-      if (!fromRoom || !entry.exits) return;
-      for (const [dir, toId] of Object.entries(entry.exits)) {
-        const toRoom = idToRoom.get(toId);
-        if (!toRoom) continue;
-        // Create forward link if not exists
-        createLinkIfNotExists(fromRoom, toRoom, dir);
-        // Create reverse link if not exists
-        const opposite = getOppositeDirection(dir);
-        if (!toRoom.userData.exits[opposite]) {
-          toRoom.userData.exits[opposite] = { room: fromRoom, direction: typeof opposite === "string" && !isNaN(opposite) ? parseInt(opposite) : opposite };
-        }
+        line.userData.direction = link;
+        fromRoom.userData.exitLinks = fromRoom.userData.exitLinks || [];
+        fromRoom.userData.exitLinks.push(line);
+        toRoom.userData.exitLinks = toRoom.userData.exitLinks || [];
+        toRoom.userData.exitLinks.push(line);
+        // store exits in both directions
+        fromRoom.userData.exits[link] = { room: toRoom, direction: link };
+        const rev = link.split(',').map(n => -parseInt(n)).join(',');
+        toRoom.userData.exits[rev] = { room: fromRoom, direction: rev };
       }
     });
+
+    // Refresh visuals and UI
+    recalculateExits();
+    if (typeof drawLinks === 'function') drawLinks();
     switchLevel(currentLevel);
   }
 
   // Initialize visibility
   switchLevel(currentLevel);
+
+  // --- Improved direction utility: strict axis-aligned and diagonal direction calculation ---
+  function getDirectionBetweenRooms(from, to) {
+    // Accepts either mesh or plain object with x, z, level/position.y
+    const getX = (room) => room.x !== undefined ? room.x : (room.position?.x ?? 0);
+    const getZ = (room) => room.z !== undefined ? room.z : (room.position?.z ?? 0);
+    const getLevel = (room) =>
+      room.level !== undefined ? room.level
+        : (room.position?.y !== undefined
+            ? (typeof room.userData?.level === 'number' ? room.userData.level : room.position.y)
+            : (room.userData?.level ?? 0));
+    const dx = Math.round(getX(to) - getX(from));
+    const dz = Math.round(getZ(to) - getZ(from));
+    const dy = Math.round(getLevel(to) - getLevel(from));
+
+    if (dx === 0 && dz === -1 && dy === 0) return 'n';
+    if (dx === 1 && dz === 0 && dy === 0) return 'e';
+    if (dx === 0 && dz === 1 && dy === 0) return 's';
+    if (dx === -1 && dz === 0 && dy === 0) return 'w';
+    if (dx === 0 && dz === 0 && dy === 1) return 'u';
+    if (dx === 0 && dz === 0 && dy === -1) return 'd';
+
+    // Diagonal directions (fallback if not strictly cardinal)
+    if (dx === 1 && dz === -1 && dy === 0) return 'ne';
+    if (dx === -1 && dz === -1 && dy === 0) return 'nw';
+    if (dx === 1 && dz === 1 && dy === 0) return 'se';
+    if (dx === -1 && dz === 1 && dy === 0) return 'sw';
+
+    // Fallback for unknown direction
+    return '?';
+  }
 
   // --- Grid selector logic ---
   function populateGridDropdown() {
