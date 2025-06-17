@@ -546,7 +546,7 @@ window.addEventListener('load', () => {
         if (!toRoom) return;
         const fromPos = getRoomCenter(from);
         const toPos = getRoomCenter(toRoom);
-        const line = createExitLine(fromPos, toPos, from, toRoom);
+        const line = createExitLine(fromPos, toPos, from, toRoom, false); // NO animation
         from.userData.exitLinks.push(line);
         toRoom.userData.exitLinks.push(line);
         from.userData.exits[dir] = { room: toRoom };
@@ -838,13 +838,48 @@ window.addEventListener('load', () => {
     return pos;
   }
 
-  function createExitLine(from, to, fromRoom, toRoom) {
+  function createExitLine(from, to, fromRoom, toRoom, animate = true) {
     const geometry = new THREE.BufferGeometry().setFromPoints([from, to]);
     const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
     const line = new THREE.Line(geometry, material);
     line.userData = { fromRoom, toRoom };
     levelContainers[LEVEL_OFFSET].add(line);
+    if (animate)
+      animateStreak(from, to);
     return line;
+  }
+
+  // --- Animate a light streak between two points (exit link effect) ---
+  function animateStreak(from, to) {
+    const streakMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff33,
+      transparent: true,
+      opacity: 1,
+      emissive: 0xffffaa
+    });
+    const streakGeom = new THREE.SphereGeometry(0.13, 10, 10);
+    const streak = new THREE.Mesh(streakGeom, streakMaterial);
+    streak.position.copy(from);
+    scene.add(streak);
+
+    let t = 0;
+    const duration = 0.4; // seconds
+    const start = performance.now();
+
+    function animate() {
+      const elapsed = (performance.now() - start) / 1000;
+      t = Math.min(1, elapsed / duration);
+      streak.position.lerpVectors(from, to, t);
+      streak.material.opacity = 1 - t;
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        scene.remove(streak);
+        streak.geometry.dispose();
+        streak.material.dispose();
+      }
+    }
+    animate();
   }
 
   // For move-drag: track original position for history
@@ -1013,36 +1048,41 @@ window.addEventListener('load', () => {
           const fromKey = step.toArray().toString();
           const toKey = step.clone().negate().toArray().toString();
           if (from.userData.exits[fromKey] && to.userData.exits[toKey]) {
-            // Remove the existing link
-            const exitLine = from.userData.exitLinks.find(line => {
-              const pos = line.geometry.attributes.position.array;
-              return (
-                (Math.abs(pos[0] - fromPos.x) < 0.1 && Math.abs(pos[2] - fromPos.z) < 0.1 &&
-                 Math.abs(pos[3] - toPos.x) < 0.1 && Math.abs(pos[5] - toPos.z) < 0.1) ||
-                (Math.abs(pos[0] - toPos.x) < 0.1 && Math.abs(pos[2] - toPos.z) < 0.1 &&
-                 Math.abs(pos[3] - fromPos.x) < 0.1 && Math.abs(pos[5] - fromPos.z) < 0.1)
-              );
-            });
-            if (exitLine) {
+            // Remove all existing lines between these two rooms (handle multiple/ghost lines)
+            const exitLines = from.userData.exitLinks.filter(line =>
+              (line.userData.fromRoom === from && line.userData.toRoom === to) ||
+              (line.userData.fromRoom === to && line.userData.toRoom === from)
+            );
+            exitLines.forEach(exitLine => {
               levelContainers.forEach(container => container.remove(exitLine));
-              from.userData.exitLinks = from.userData.exitLinks.filter(l => l !== exitLine);
-              to.userData.exitLinks = to.userData.exitLinks.filter(l => l !== exitLine);
-            }
+              if (exitLine.geometry && exitLine.geometry.attributes && exitLine.geometry.attributes.position) {
+                animateBreakingLink(exitLine.geometry.attributes.position.array);
+              }
+            });
+            // Remove all these lines from both rooms' exitLinks
+            from.userData.exitLinks = from.userData.exitLinks.filter(line =>
+              !((line.userData.fromRoom === from && line.userData.toRoom === to) ||
+                (line.userData.fromRoom === to && line.userData.toRoom === from))
+            );
+            to.userData.exitLinks = to.userData.exitLinks.filter(line =>
+              !((line.userData.fromRoom === from && line.userData.toRoom === to) ||
+                (line.userData.fromRoom === to && line.userData.toRoom === from))
+            );
             delete from.userData.exits[fromKey];
             delete to.userData.exits[toKey];
             selectedFace = null;
-          // --- Clear highlight and selectedRoom after link/unlink ---
-          // Ensure both the selectedRoom reference and its highlight are cleared
-          if (selectedRoom && selectedRoom.outlineMesh) {
-            levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-            selectedRoom.outlineMesh.geometry.dispose();
-            selectedRoom.outlineMesh.material.dispose();
-            delete selectedRoom.outlineMesh;
-          }
-          if (selectedRoom && selectedRoom.material && 'emissive' in selectedRoom.material) {
-            selectedRoom.material.emissive.setHex(0x000000);
-          }
-          selectedRoom = null;
+            // --- Clear highlight and selectedRoom after link/unlink ---
+            // Ensure both the selectedRoom reference and its highlight are cleared
+            if (selectedRoom && selectedRoom.outlineMesh) {
+              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+              selectedRoom.outlineMesh.geometry.dispose();
+              selectedRoom.outlineMesh.material.dispose();
+              delete selectedRoom.outlineMesh;
+            }
+            if (selectedRoom && selectedRoom.material && selectedRoom.material.emissive) {
+              selectedRoom.material.emissive.setHex(0x000000);
+            }
+            selectedRoom = null;
             // --- Push history after removing a link ---
             pushHistory();
             return;
@@ -1118,9 +1158,53 @@ window.addEventListener('load', () => {
             selectedRoom.outlineMesh.material.dispose();
             delete selectedRoom.outlineMesh;
           }
-          if (selectedRoom && selectedRoom.material && 'emissive' in selectedRoom.material) {
+          if (selectedRoom && selectedRoom.material && selectedRoom.material.emissive) {
             selectedRoom.material.emissive.setHex(0x000000);
           }
+  // --- Animate breaking link effect ---
+  function animateBreakingLink(positionArray) {
+    // positionArray: [from.x, from.y, from.z, to.x, to.y, to.z]
+    const [x1, y1, z1, x2, y2, z2] = positionArray;
+    // Create particles along the line that break apart and fade out
+    const numParticles = 8 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < numParticles; i++) {
+      const t = i / (numParticles - 1);
+      const x = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 0.13;
+      const y = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 0.13;
+      const z = z1 + (z2 - z1) * t + (Math.random() - 0.5) * 0.13;
+      const particleGeom = new THREE.SphereGeometry(0.10 + Math.random() * 0.06, 8, 8);
+      const particleMat = new THREE.MeshStandardMaterial({
+        color: 0xffff33,
+        transparent: true,
+        opacity: 1
+      });
+      const particle = new THREE.Mesh(particleGeom, particleMat);
+      particle.position.set(x, y, z);
+      scene.add(particle);
+
+      // Animate each particle to "break away"
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.13,
+        0.05 + Math.random() * 0.13,
+        (Math.random() - 0.5) * 0.13
+      );
+      let age = 0;
+      const lifetime = 0.4 + Math.random() * 0.5;
+      function animateParticle() {
+        age += 0.018;
+        particle.position.add(velocity);
+        particle.material.opacity *= 0.86;
+        if (age < lifetime && particle.material.opacity > 0.04) {
+          requestAnimationFrame(animateParticle);
+        } else {
+          scene.remove(particle);
+          particle.geometry.dispose();
+          particle.material.dispose();
+        }
+      }
+      animateParticle();
+    }
+  }
           selectedRoom = null;
         }
         return;
@@ -2442,6 +2526,52 @@ ${exitsStr}${extrasStr}End
     scene.add(mesh);
     activePuffs.push(mesh);
   }
+
+  // --- Animate a breaking (shattering) line effect when a link is removed ---
+function animateBreakingLink(positionArray) {
+  // Get the two endpoints of the line
+  const [x1, y1, z1, x2, y2, z2] = positionArray;
+  // Create several fragments to "fly away"
+  for (let i = 0; i < 8; i++) {
+    const material = new THREE.LineBasicMaterial({
+      color: 0xff5555,
+      transparent: true,
+      opacity: 0.7
+    });
+    const angle = Math.random() * 2 * Math.PI;
+    const len = 0.22 + Math.random() * 0.12;
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    const midZ = (z1 + z2) / 2;
+    // Fragment points
+    const start = new THREE.Vector3(midX, midY, midZ);
+    const dir = new THREE.Vector3(Math.cos(angle), 0.35 + Math.random() * 0.4, Math.sin(angle)).normalize();
+    const end = start.clone().add(dir.multiplyScalar(len));
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+    const fragment = new THREE.Line(geometry, material);
+    fragment.fragLife = 0;
+    scene.add(fragment);
+
+    // Animate each fragment
+    (function animateFragment(frag) {
+      function tick() {
+        frag.fragLife += 0.02;
+        frag.position.x += Math.cos(angle) * 0.04;
+        frag.position.y += 0.035 + 0.08 * Math.random();
+        frag.position.z += Math.sin(angle) * 0.04;
+        frag.material.opacity *= 0.91;
+        if (frag.material.opacity > 0.07 && frag.fragLife < 1.2) {
+          requestAnimationFrame(tick);
+        } else {
+          scene.remove(frag);
+          frag.geometry.dispose();
+          frag.material.dispose();
+        }
+      }
+      tick();
+    })(fragment);
+  }
+}
 }
 });
   // --- Animate a room "pop-in" effect on creation ---
@@ -2467,3 +2597,49 @@ ${exitsStr}${extrasStr}End
     }
     popFrame();
   }
+
+  // --- Animate a breaking (shattering) line effect when a link is removed ---
+function animateBreakingLink(positionArray) {
+  // Get the two endpoints of the line
+  const [x1, y1, z1, x2, y2, z2] = positionArray;
+  // Create several fragments to "fly away"
+  for (let i = 0; i < 8; i++) {
+    const material = new THREE.LineBasicMaterial({
+      color: 0xff5555,
+      transparent: true,
+      opacity: 0.7
+    });
+    const angle = Math.random() * 2 * Math.PI;
+    const len = 0.22 + Math.random() * 0.12;
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    const midZ = (z1 + z2) / 2;
+    // Fragment points
+    const start = new THREE.Vector3(midX, midY, midZ);
+    const dir = new THREE.Vector3(Math.cos(angle), 0.35 + Math.random() * 0.4, Math.sin(angle)).normalize();
+    const end = start.clone().add(dir.multiplyScalar(len));
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+    const fragment = new THREE.Line(geometry, material);
+    fragment.fragLife = 0;
+    scene.add(fragment);
+
+    // Animate each fragment
+    (function animateFragment(frag) {
+      function tick() {
+        frag.fragLife += 0.02;
+        frag.position.x += Math.cos(angle) * 0.04;
+        frag.position.y += 0.035 + 0.08 * Math.random();
+        frag.position.z += Math.sin(angle) * 0.04;
+        frag.material.opacity *= 0.91;
+        if (frag.material.opacity > 0.07 && frag.fragLife < 1.2) {
+          requestAnimationFrame(tick);
+        } else {
+          scene.remove(frag);
+          frag.geometry.dispose();
+          frag.material.dispose();
+        }
+      }
+      tick();
+    })(fragment);
+  }
+}
