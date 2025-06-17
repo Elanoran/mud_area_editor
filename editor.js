@@ -1173,6 +1173,8 @@ window.addEventListener('load', () => {
             };
             levelContainers[levelIndex].add(box);
             rooms[levelIndex].push(box);
+            // Animate new room pop-in (creation only, not import/restore)
+            animateRoomPopIn(box);
             updateFloorToLowestLevel(gridSize.width, gridSize.height);
             pushHistory();
           }
@@ -2442,3 +2444,26 @@ ${exitsStr}${extrasStr}End
   }
 }
 });
+  // --- Animate a room "pop-in" effect on creation ---
+  function animateRoomPopIn(roomMesh) {
+    roomMesh.scale.set(0.1, 0.1, 0.1);
+    const targetScale = { x: 1, y: 1, z: 1 };
+    let t = 0;
+    function popFrame() {
+      t += 0.08;
+      // Optional: Ease-out and bounce
+      const eased = t < 1 ? (1 - Math.pow(1 - t, 3)) : 1;
+      let overshoot = 1 + 0.12 * Math.sin(10 * t) * (1 - t); // Small bounce
+      roomMesh.scale.set(
+        THREE.MathUtils.lerp(0.1, targetScale.x * overshoot, eased),
+        THREE.MathUtils.lerp(0.1, targetScale.y * overshoot, eased),
+        THREE.MathUtils.lerp(0.1, targetScale.z * overshoot, eased)
+      );
+      if (t < 1) {
+        requestAnimationFrame(popFrame);
+      } else {
+        roomMesh.scale.set(1, 1, 1);
+      }
+    }
+    popFrame();
+  }
