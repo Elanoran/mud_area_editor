@@ -1,6 +1,6 @@
 # MUD Area Editor
 
-This is a browser-based MUD (Multi-User Dungeon) area editor for managing rooms, exits, areas, and formats such as ROM and AW.
+Dive into classic MUD world building with a "modern" twist! This browser based area editor lets you visually create, edit, and manage rooms, exits, and areas for your favorite MUD codebases including ROM and JSON format for backup. Instantly shape your dungeon’s map, fine tune layouts, and export with ease all from the comfort of your web browser.
 
 ## Screenshot
 
