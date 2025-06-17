@@ -60,10 +60,28 @@ if (typeof window.updateRoomInfo !== "function") {
 import * as THREE from 'https://esm.sh/three@0.157.0';
 import { OrbitControls } from 'https://esm.sh/three@0.157.0/examples/jsm/controls/OrbitControls.js';
 
+// --- Funny random names for areaName and filename, paired by index ---
+const funnyNames = [
+  { area: "The Dank Cavern",     file: "dankness"   },
+  { area: "Bacon Village",      file: "bacon"      },
+  { area: "Meme Plains",        file: "memezone"   },
+  { area: "Secret Cow Level",   file: "cows"       },
+  { area: "Damp Catacombs",     file: "secretz"    }
+];
+
 window.addEventListener('load', () => {
+  window.sunAnimationActive = false;
+
+  // Set random funny names if both areaName and filename are empty on load, paired by index
+  const areaNameInput = document.getElementById('areaName');
+  const filenameInput = document.getElementById('filename');
+  if (areaNameInput && filenameInput && !areaNameInput.value.trim() && !filenameInput.value.trim()) {
+    const idx = Math.floor(Math.random() * funnyNames.length);
+    areaNameInput.value = funnyNames[idx].area;
+    filenameInput.value = funnyNames[idx].file;
+  }
   // --- Direction constants ---
   const toggleBtn = document.getElementById('toggleAreaInfoBtn');
-  const areaInfoContainer = document.getElementById('areaInfoContainer');
 
   if (toggleBtn && areaInfoContainer) {
     toggleBtn.addEventListener('click', () => {
@@ -86,48 +104,109 @@ window.addEventListener('load', () => {
       }
     });
   }
-  // --- Tab switching logic ---
+  
+  // --- Tab switching with dynamic height ---
+  // New tab logic for #tool-info .tab-header and #areaInfoContainer structure
   const tabButtons = document.querySelectorAll('.tab-button');
-  const tabContents = document.querySelectorAll('.tab-content');
+  const areaInfoContainer = document.getElementById('areaInfoContainer');
+  const tabContents = areaInfoContainer ? areaInfoContainer.querySelectorAll('.tab-content') : [];
 
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const targetId = button.dataset.tab;
-
-      const areaInfoContainer = document.getElementById('areaInfoContainer');
-      const areaInfo = document.getElementById('area-info');
-      const isAlreadyActive = button.classList.contains('active');
-      const isHidden = areaInfoContainer.classList.contains('hidden');
-
-      // Toggle collapse if already active and visible
-      if (isAlreadyActive && !isHidden) {
-        areaInfoContainer.classList.add('hidden');
-        areaInfo?.classList.remove('expanded-area', 'expanded-room');
-        areaInfo?.classList.add('collapsed');
-        return;
-      }
-
-      // Activate the tab and show areaInfoContainer
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      tabContents.forEach(content => content.classList.remove('active'));
-      button.classList.add('active');
-      document.getElementById(targetId)?.classList.add('active');
-
-      areaInfoContainer.classList.remove('hidden');
-      areaInfo?.classList.remove('collapsed', 'expanded-area', 'expanded-room');
-      areaInfo?.classList.add(targetId === 'roomTab' ? 'expanded-room' : 'expanded-area');
+  function showTab(tabId) {
+    tabContents.forEach(tab => {
+      tab.classList.toggle('active', tab.id === tabId);
     });
+    tabButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    // Set container height to active tab height (with smooth transition)
+    const activeTab = areaInfoContainer.querySelector('.tab-content.active');
+    if (activeTab) {
+      areaInfoContainer.style.height = activeTab.scrollHeight + 'px';
+    }
+  }
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      showTab(btn.dataset.tab);
+    });
+  });
+
+  // On load, ensure correct height
+  window.addEventListener('DOMContentLoaded', () => {
+    // Find the initially active tab button, or default to 'areaTab'
+    const active = areaInfoContainer.querySelector('.tab-button.active');
+    showTab(active ? active.dataset.tab : 'areaTab');
+  });
+
+  // Optional: reset height on window resize
+  window.addEventListener('resize', () => {
+    const activeTab = areaInfoContainer.querySelector('.tab-content.active');
+    if (activeTab) {
+      areaInfoContainer.style.height = activeTab.scrollHeight + 'px';
+    }
   });
   let formatsData = {};
   let formats = {};
 
   // Fetch formats.json after window load
- fetch('./formats.json?nocache=' + Date.now())
+  fetch('./formats.json?nocache=' + Date.now())
     .then(response => response.json())
     .then(data => {
       formatsData = data;
       formats = formatsData.formats;
+
+      // --- Dynamically populate export format dropdown ---
+      const exportFormatSelect = document.getElementById('exportFormat');
+      if (exportFormatSelect) {
+        exportFormatSelect.innerHTML = ''; // Clear any hardcoded options
+        for (const key of Object.keys(formats)) {
+          const opt = document.createElement('option');
+          opt.value = key;
+          opt.textContent = formats[key].label || key;
+          exportFormatSelect.appendChild(opt);
+        }
+      }
+
+      const filenameExtSpan = document.getElementById('filenameExt');
+      const filenameInput = document.getElementById('filename');
+
+      // Helper: get extension from loaded formats or fallback map
+      function getFormatExtension(formatName) {
+        if (formats && formats[formatName] && formats[formatName].fileExtension) {
+          return formats[formatName].fileExtension.replace(/^\./, '');
+        }
+        // Fallbacks:
+        if (formatName === 'JSON') return 'json';
+        if (formatName === 'ROM' || formatName === 'AW') return 'are';
+        return 'txt';
+      }
+
+      // Update extension UI and auto-fix filename extension if needed
+      function updateFilenameExtUI() {
+        const fmt = exportFormatSelect.value;
+        const ext = getFormatExtension(fmt);
+        if (filenameExtSpan) filenameExtSpan.textContent = '.' + ext;
+      }
+
+      // Listen for export format changes
+      if (exportFormatSelect) {
+        exportFormatSelect.addEventListener('change', () => {
+          updateFilenameExtUI();
+        });
+      }
+
+      // On initial load after populating dropdown
+      updateFilenameExtUI();
     });
+
+  // --- Track floor meshes per level ---
+  let floorMeshes = {};
+
+  let groundFloorVisible = false;
+
+  let groundFloorColor = 0x484444;
+
+  let gridVisible = true;
 
   // scene, camera, renderer setup
   const scene = new THREE.Scene();
@@ -145,6 +224,8 @@ window.addEventListener('load', () => {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   // --- Compass label logic ---
   // Compass label meshes (Text Meshes or Sprites for N/S/E/W)
@@ -157,24 +238,38 @@ window.addEventListener('load', () => {
       const context = canvas.getContext('2d');
       canvas.width = 128;
       canvas.height = 64;
-      context.fillStyle = text === 'N' ? 'red' : text === 'S' ? 'green' : 'white';
+      context.clearRect(0, 0, canvas.width, canvas.height); // ensure fully transparent
+
       context.font = 'bold 28px sans-serif';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
+      if (text === 'N') {
+        context.fillStyle = 'red';
+      } else if (text === 'S') {
+        context.fillStyle = 'green';
+      } else {
+        context.fillStyle = 'white';
+      }
       context.fillText(text, canvas.width / 2, canvas.height / 2);
 
       const texture = new THREE.CanvasTexture(canvas);
-      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,   // always draw above floor
+        depthWrite: false
+      });
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(2, 1, 1);
+      sprite.renderOrder = 999; // always on top!
       return sprite;
     }
     // Create meshes for each direction
     return {
       north: makeTextMesh('N'),
       south: makeTextMesh('S'),
-      east: makeTextMesh('E'),
-      west: makeTextMesh('W')
+      east:  makeTextMesh('E'),
+      west:  makeTextMesh('W')
     };
   }
 
@@ -191,10 +286,11 @@ window.addEventListener('load', () => {
 
     const { width, height } = grid.geometry.parameters;
 
-    compassLabels.north.position.set(0, 0.1, -height / 2);
-    compassLabels.south.position.set(0, 0.1, height / 2);
-    compassLabels.east.position.set(width / 2, 0.1, 0);
-    compassLabels.west.position.set(-width / 2, 0.1, 0);
+    const COMPASS_Y = 0.51; // Just above the floor and rooms
+    compassLabels.north.position.set(0, COMPASS_Y, -height / 2);
+    compassLabels.south.position.set(0, COMPASS_Y, height / 2);
+    compassLabels.east.position.set(width / 2, COMPASS_Y, 0);
+    compassLabels.west.position.set(-width / 2, COMPASS_Y, 0);
 
     for (const key of Object.keys(compassLabels)) {
       levelContainers[LEVEL_OFFSET].add(compassLabels[key]);
@@ -205,6 +301,241 @@ window.addEventListener('load', () => {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0, 0);
   controls.update();
+  // Grid lock toggle using lock button
+  let gridLocked = true;
+  const lockBtn = document.getElementById('fitViewBtn');
+  // Initialize button icon and tooltip
+  // Initialize button icon and tooltip
+  lockBtn.innerHTML = gridLocked
+    ? '<i class="fa-solid fa-lock"></i>'
+    : '<i class="fa-solid fa-lock-open"></i>';
+  lockBtn.title = gridLocked ? 'Lock' : 'Unlock';
+  lockBtn.classList.toggle('active', gridLocked);
+  lockBtn.classList.toggle('locked',   gridLocked);
+  lockBtn.classList.toggle('unlocked', !gridLocked);
+  lockBtn.addEventListener('click', () => {
+    gridLocked = !gridLocked;
+    lockBtn.classList.toggle('active', gridLocked);
+    // Update icon and tooltip after toggle
+    lockBtn.innerHTML = gridLocked
+      ? '<i class="fa-solid fa-lock"></i>'
+      : '<i class="fa-solid fa-lock-open"></i>';
+    lockBtn.title = gridLocked ? 'Lock' : 'Unlock';
+    lockBtn.classList.toggle('locked',   gridLocked);
+    lockBtn.classList.toggle('unlocked', !gridLocked);
+  });
+
+  // Delete Room button
+  const deleteBtn = document.getElementById('deleteRoomBtn');
+  deleteBtn.addEventListener('click', () => {
+    if (!selectedRoom) {
+      alert('No room selected to delete.');
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this room?')) return;
+    const room = selectedRoom;
+    const levelIndex = room.userData.level + LEVEL_OFFSET;
+    // Remove exit lines
+    room.userData.exitLinks.forEach(line => {
+      levelContainers.forEach(container => container.remove(line));
+    });
+    // Clean up exits in other rooms
+    rooms.forEach(levelArr => {
+      levelArr.forEach(other => {
+        if (other !== room && other.userData.exits) {
+          for (const dir in other.userData.exits) {
+            if (other.userData.exits[dir].room === room) {
+              delete other.userData.exits[dir];
+            }
+          }
+        }
+      });
+    });
+    // Remove outline if present
+    if (room.outlineMesh) {
+      levelContainers[levelIndex].remove(room.outlineMesh);
+      room.outlineMesh.geometry.dispose();
+      room.outlineMesh.material.dispose();
+      delete room.outlineMesh;
+    }
+    // Free vnum, remove mesh
+    freeVnum(room.userData.id);
+    levelContainers[levelIndex].remove(room);
+    const idx = rooms[levelIndex].indexOf(room);
+    if (idx !== -1) rooms[levelIndex].splice(idx, 1);
+    selectedRoom = null;
+    // Update visuals
+    recalculateExits();
+    if (typeof drawLinks === 'function') drawLinks();
+    updateRoomInfo(null);
+    pushHistory();
+  });
+
+  // Clean Scene button
+  const cleanBtn = document.getElementById('cleanSceneBtn');
+  cleanBtn.addEventListener('click', () => {
+    if (!confirm('Are you sure you want to clear the scene? This will remove all rooms and exits.')) return;
+    // Clear history after scene clean
+    undoStack = [];
+    redoStack = [];
+    // Remove all exit lines
+    levelContainers[LEVEL_OFFSET].children
+      .filter(obj => obj.type === 'Line')
+      .forEach(line => levelContainers[LEVEL_OFFSET].remove(line));
+    // Remove all rooms and outlines
+    rooms.forEach((levelArr, idx) => {
+      levelArr.forEach(room => {
+        if (room.outlineMesh) {
+          levelContainers[idx].remove(room.outlineMesh);
+          room.outlineMesh.geometry.dispose();
+          room.outlineMesh.material.dispose();
+        }
+        levelContainers[idx].remove(room);
+        room.geometry.dispose();
+        room.material.dispose();
+      });
+      rooms[idx] = [];
+    });
+    // --- FULLY reset vnum state and UI inputs ---
+    minVnum = 100;
+    maxVnum = 199;
+    usedVnums.clear();
+    lastAssignedVnum = minVnum - 1;
+    const vnumMinInput = document.getElementById('vnumMin');
+    const vnumMaxInput = document.getElementById('vnumMax');
+    if (vnumMinInput && vnumMaxInput) {
+      vnumMinInput.value = minVnum;
+      vnumMaxInput.value = maxVnum;
+    }
+    selectedRoom = null;
+    updateRoomInfo(null);
+    recalculateExits();
+    if (typeof drawLinks === 'function') drawLinks();
+    // --- Reset area name and filename to new random funny names ---
+    if (areaNameInput && filenameInput) {
+      const idx = Math.floor(Math.random() * funnyNames.length);
+      areaNameInput.value = funnyNames[idx].area;
+      filenameInput.value = funnyNames[idx].file;
+    }
+    // Push a new baseline history state after cleaning the scene
+    pushHistory();
+  });
+
+  // --- Undo/Redo history (max 10 states) ---
+  let undoStack = [];
+  let redoStack = [];
+  const MAX_HISTORY = 10;
+
+  function captureState() {
+    // Serialize rooms and exits
+    const data = rooms.flat().map(room => ({
+      id: room.userData.id,
+      x: room.position.x,
+      z: room.position.z,
+      level: room.userData.level,
+      color: room.userData.color,
+      exits: Object.entries(room.userData.exits || {}).map(([dir, d]) => ({ dir, to: d.room.userData.id }))
+    }));
+    return JSON.stringify(data);
+  }
+
+  function restoreState(stateStr) {
+    const data = JSON.parse(stateStr);
+    // Clear current scene
+    rooms.forEach((levelArr, idx) => {
+      levelArr.forEach(r => {
+        // remove exit lines
+        (r.userData.exitLinks || []).forEach(line => levelContainers.forEach(c => c.remove(line)));
+        // remove outline
+        if (r.outlineMesh) {
+          levelContainers[idx].remove(r.outlineMesh);
+          r.outlineMesh.geometry.dispose();
+          r.outlineMesh.material.dispose();
+        }
+        levelContainers[idx].remove(r);
+      });
+      rooms[idx] = [];
+    });
+    usedVnums.clear();
+    // Recreate rooms
+    const mapById = {};
+    data.forEach(entry => {
+      const levelIdx = entry.level + LEVEL_OFFSET;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1,1,1),
+        new THREE.MeshStandardMaterial({ color: entry.color, emissive: 0x000000 })
+      );
+      mesh.position.set(entry.x, 0.5, entry.z);
+      mesh.userData = { id: entry.id, exits: {}, exitLinks: [], color: entry.color, level: entry.level };
+      levelContainers[levelIdx].add(mesh);
+      rooms[levelIdx].push(mesh);
+      usedVnums.add(entry.id);
+      mapById[entry.id] = mesh;
+    });
+    // Recreate exits
+    data.forEach(entry => {
+      const from = mapById[entry.id];
+      entry.exits.forEach(({ dir, to }) => {
+        const toRoom = mapById[to];
+        if (!toRoom) return;
+        const fromPos = getRoomCenter(from);
+        const toPos = getRoomCenter(toRoom);
+        const line = createExitLine(fromPos, toPos, from, toRoom);
+        from.userData.exitLinks.push(line);
+        toRoom.userData.exitLinks.push(line);
+        from.userData.exits[dir] = { room: toRoom };
+      });
+    });
+    selectedRoom = null;
+    selectedFace = null;
+    // Remove any remaining outline meshes just in case
+    for (const levelArr of rooms) {
+      for (const room of levelArr) {
+        if (room.outlineMesh) {
+          levelContainers[room.userData.level + LEVEL_OFFSET].remove(room.outlineMesh);
+          room.outlineMesh.geometry.dispose();
+          room.outlineMesh.material.dispose();
+          delete room.outlineMesh;
+        }
+      }
+    }
+    recalculateExits();
+    if (typeof drawLinks === 'function') drawLinks();
+    updateRoomInfo(null);
+  }
+
+  function pushHistory() {
+    undoStack.push(captureState());
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack = [];
+    updateUndoRedoUI();
+  }
+
+  // Undo button
+  undoBtn.addEventListener('click', () => {
+    // Only undo if there is a previous state
+    if (undoStack.length < 2) return;
+    // Move current state to redo stack
+    redoStack.push(undoStack.pop());
+    if (redoStack.length > MAX_HISTORY) redoStack.shift();
+    // Restore the new top of undo stack (the previous state)
+    const prev = undoStack[undoStack.length - 1];
+    restoreState(prev);
+    updateUndoRedoUI();
+    // Do NOT call pushHistory() here
+  });
+
+  // Redo button
+  redoBtn.addEventListener('click', () => {
+    if (redoStack.length === 0) return;
+    // Move the top of redoStack to undoStack and restore it
+    const next = redoStack.pop();
+    undoStack.push(next);
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    restoreState(next);
+    updateUndoRedoUI();
+    // Do NOT call pushHistory() here
+  });
 
   // grid
   let grid;
@@ -236,9 +567,31 @@ window.addEventListener('load', () => {
   }
 
   function updateGrid(width, height) {
+    // Remove any previous grid
     if (grid) {
       levelContainers.forEach(g => g.remove(grid));
     }
+
+    // Remove ALL previous floor meshes from ALL levels, not just the current
+    for (let key in floorMeshes) {
+      if (floorMeshes[key]) {
+        levelContainers[key].remove(floorMeshes[key]);
+        floorMeshes[key].geometry.dispose();
+        floorMeshes[key].material.dispose();
+        delete floorMeshes[key];
+      }
+    }
+
+    // Create new floor mesh for the current level only
+    const floorGeometry = new THREE.PlaneGeometry(width, height);
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: groundFloorColor });
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(0, 0, 0);
+    floorMesh.receiveShadow = true;
+    floorMesh.visible = groundFloorVisible;
+    levelContainers[currentLevel + LEVEL_OFFSET].add(floorMesh);
+    floorMeshes[currentLevel + LEVEL_OFFSET] = floorMesh;
 
     const spacing = 1;
     const group = new THREE.Group();
@@ -270,6 +623,40 @@ window.addEventListener('load', () => {
     grid = group;
     levelContainers[currentLevel + LEVEL_OFFSET].add(grid);
     updateCompassLabels(grid);
+    updateFloorToLowestLevel(width, height);
+  }
+
+  // --- Floor follows lowest room level ---
+  function updateFloorToLowestLevel(width, height) {
+    // Remove any existing floor meshes
+    for (let key in floorMeshes) {
+      if (floorMeshes[key]) {
+        levelContainers[key].remove(floorMeshes[key]);
+        floorMeshes[key].geometry.dispose();
+        floorMeshes[key].material.dispose();
+        delete floorMeshes[key];
+      }
+    }
+    // Find lowest level with rooms
+    let lowestIdx = null;
+    for (let i = 0; i < rooms.length; i++) {
+      if (rooms[i].length > 0) {
+        lowestIdx = i;
+        break;
+      }
+    }
+    if (lowestIdx === null) return; // no rooms anywhere
+
+    // Create and add new floor mesh at the lowest room level
+    const floorGeometry = new THREE.PlaneGeometry(width, height);
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: groundFloorColor });
+    const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.set(0, 0, 0);
+    floorMesh.receiveShadow = true;
+    floorMesh.visible = groundFloorVisible; // <-- Add this line!
+    levelContainers[lowestIdx].add(floorMesh);
+    floorMeshes[lowestIdx] = floorMesh;
   }
 
   // lights
@@ -277,6 +664,15 @@ window.addEventListener('load', () => {
   const light = new THREE.DirectionalLight(0xffffff, 0.7);
   light.position.set(5, 10, 7);
   scene.add(light);
+  light.castShadow = true;
+  light.shadow.mapSize.width = 2048;
+  light.shadow.mapSize.height = 2048;
+  light.shadow.camera.left = -50;
+  light.shadow.camera.right = 50;
+  light.shadow.camera.top = 50;
+  light.shadow.camera.bottom = -50;
+  light.shadow.camera.near = 1;
+  light.shadow.camera.far = 100;
 
   // interaction
   const raycaster = new THREE.Raycaster();
@@ -300,8 +696,12 @@ window.addEventListener('load', () => {
       selectedRoomColor = btn.dataset.color;
       // Update color of selected room immediately if a room is selected
       if (selectedRoom) {
-        selectedRoom.material.color.set(selectedRoomColor);
-        selectedRoom.userData.color = selectedRoomColor;
+        // Only push history if color actually changes
+        if (selectedRoom.userData.color !== selectedRoomColor) {
+          selectedRoom.material.color.set(selectedRoomColor);
+          selectedRoom.userData.color = selectedRoomColor;
+          pushHistory();
+        }
       }
     });
   });
@@ -378,58 +778,21 @@ window.addEventListener('load', () => {
     return line;
   }
 
+  // For move-drag: track original position for history
+  let dragStartPos = null;
   function onPointerDown(event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Defensive: If selectedRoom is gone but selectedFace remains, clear selection and abort
+    if (!selectedRoom && selectedFace) {
+      selectedFace = null;
+      // Defensive: do not proceed with link logic if selection is gone
+      return;
+    }
     raycaster.setFromCamera(mouse, camera);
 
     if (event.button === 0) {
       const current = currentLevel + LEVEL_OFFSET;
-
-      // --- Shift+Left click on room: remove room only if nothing is currently selected for linking ---
-      if (event.shiftKey && !selectedFace) {
-        const intersects = raycaster.intersectObjects(rooms[current]);
-        if (intersects.length > 0) {
-          const intersect = intersects[0];
-          // Only remove room if no room is currently selected (for linking)
-          if (!selectedRoom && intersect && intersect.object?.userData?.id !== undefined) {
-            const room = intersect.object;
-            const index = rooms[current].indexOf(room);
-            if (index !== -1 && room.parent === levelContainers[current]) {
-              // Remove exits pointing to or from this room
-              room.userData.exitLinks.forEach(line => {
-                levelContainers.forEach(container => container.remove(line));
-              });
-              rooms.forEach(level => {
-                level.forEach(other => {
-                  if (other !== room) {
-                    const exits = other.userData.exits || {};
-                    for (let key in exits) {
-                      if (exits[key].room === room) {
-                        delete exits[key];
-                      }
-                    }
-                  }
-                });
-              });
-              // Remove selection outline if the deleted room is currently selected
-              if (selectedRoom === room) {
-                if (selectedRoom.outlineMesh) {
-                  levelContainers[currentLevel + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-                  selectedRoom.outlineMesh.geometry.dispose();
-                  selectedRoom.outlineMesh.material.dispose();
-                  delete selectedRoom.outlineMesh;
-                }
-                selectedRoom = null;
-              }
-              freeVnum(room.userData.id);
-              levelContainers[current].remove(room);
-              rooms[current].splice(index, 1);
-              return; // stop further handling
-            }
-          }
-        }
-      }
 
       // --- Existing intersect logic for left-click ---
       // Only allow selection/toggling for rooms on currentLevel, currentLevel+1, currentLevel-1
@@ -514,6 +877,11 @@ window.addEventListener('load', () => {
             // Store reference to cleanup later
             selectedRoom.outlineMesh = outlineMesh;
             isDragging = true;
+            // Store original position for history
+            dragStartPos = {
+              x: selectedRoom.position.x,
+              z: selectedRoom.position.z
+            };
           } else {
             // Deselect: remove outline mesh
             if (selectedRoom?.outlineMesh) {
@@ -594,21 +962,20 @@ window.addEventListener('load', () => {
             delete from.userData.exits[fromKey];
             delete to.userData.exits[toKey];
             selectedFace = null;
-            // --- Clear highlight and selectedRoom after link/unlink ---
-            // Ensure both the selectedRoom reference and its highlight are cleared
-            if (selectedRoom?.outlineMesh) {
-              levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-              selectedRoom.outlineMesh.geometry.dispose();
-              selectedRoom.outlineMesh.material.dispose();
-              delete selectedRoom.outlineMesh;
-            }
-            if (selectedRoom) {
-              const mat = selectedRoom.material;
-              if (mat && 'emissive' in mat) {
-                mat.emissive.setHex(0x000000);
-              }
-              selectedRoom = null;
-            }
+          // --- Clear highlight and selectedRoom after link/unlink ---
+          // Ensure both the selectedRoom reference and its highlight are cleared
+          if (selectedRoom && selectedRoom.outlineMesh) {
+            levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+            selectedRoom.outlineMesh.geometry.dispose();
+            selectedRoom.outlineMesh.material.dispose();
+            delete selectedRoom.outlineMesh;
+          }
+          if (selectedRoom && selectedRoom.material && 'emissive' in selectedRoom.material) {
+            selectedRoom.material.emissive.setHex(0x000000);
+          }
+          selectedRoom = null;
+            // --- Push history after removing a link ---
+            pushHistory();
             return;
           }
 
@@ -670,21 +1037,22 @@ window.addEventListener('load', () => {
               selectedRoom.exits[offsetKey] = room.id;
               room.exits[reverseOffsetKey] = selectedRoom.id;
             }
+            // --- Push history after creating a link ---
+            pushHistory();
           }
           selectedFace = null;
           // --- Clear highlight and selectedRoom after link creation ---
           // Ensure both the selectedRoom reference and its highlight are cleared
-          // (Consistent with standard left-click toggle logic)
-          if (selectedRoom?.outlineMesh) {
+          if (selectedRoom && selectedRoom.outlineMesh) {
             levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
             selectedRoom.outlineMesh.geometry.dispose();
             selectedRoom.outlineMesh.material.dispose();
             delete selectedRoom.outlineMesh;
           }
-          if (selectedRoom) {
+          if (selectedRoom && selectedRoom.material && 'emissive' in selectedRoom.material) {
             selectedRoom.material.emissive.setHex(0x000000);
-            selectedRoom = null;
           }
+          selectedRoom = null;
         }
         return;
       }
@@ -696,8 +1064,7 @@ window.addEventListener('load', () => {
       const x = Math.floor(point.x) + 0.5, z = Math.floor(point.z) + 0.5;
 
       if (event.button === 0 && event.shiftKey) {
-        // Only allow add/delete room if no room is currently selected
-        // Also, only allow if no room is currently selected (selectedFace === null)
+        // Only allow add room if no room is currently selected
         if (!selectedFace) {
           const levelIndex = currentLevel + LEVEL_OFFSET;
           // Check if a room already exists at this exact location and level (on current level only)
@@ -708,37 +1075,8 @@ window.addEventListener('load', () => {
           );
 
           if (existingIndex !== -1) {
-            // Remove room and its links
-            const room = rooms[levelIndex][existingIndex];
-            room.userData.exitLinks.forEach(line => {
-              levelContainers.forEach(container => container.remove(line));
-            });
-            // Clean up exits from other rooms pointing to this one
-            rooms.forEach(level => {
-              level.forEach(other => {
-                if (other !== room) {
-                  const exits = other.userData.exits || {};
-                  for (let key in exits) {
-                    if (exits[key].room === room) {
-                      delete exits[key];
-                    }
-                  }
-                }
-              });
-            });
-            // Remove selection outline if the deleted room is currently selected
-            if (selectedRoom === room) {
-              if (selectedRoom.outlineMesh) {
-                levelContainers[currentLevel + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-                selectedRoom.outlineMesh.geometry.dispose();
-                selectedRoom.outlineMesh.material.dispose();
-                delete selectedRoom.outlineMesh;
-              }
-              selectedRoom = null;
-            }
-            freeVnum(room.userData.id);
-            levelContainers[levelIndex].remove(room);
-            rooms[levelIndex].splice(existingIndex, 1);
+            // Do nothing if a room already exists at this position
+            return;
           } else {
             // Add new room
             const vnum = getNextVnum();
@@ -752,6 +1090,8 @@ window.addEventListener('load', () => {
               new THREE.BoxGeometry(1, 1, 1),
               new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
             );
+            box.castShadow = true;
+            box.receiveShadow = true;
             box.position.set(x, 0.5, z);
             // Explicitly set material color and userData.color
             box.material.color.set(color);
@@ -764,6 +1104,8 @@ window.addEventListener('load', () => {
             };
             levelContainers[levelIndex].add(box);
             rooms[levelIndex].push(box);
+            updateFloorToLowestLevel(gridSize.width, gridSize.height);
+            pushHistory();
           }
         }
       }
@@ -843,9 +1185,7 @@ window.addEventListener('load', () => {
     // Only disable OrbitControls rotation while dragging and a node is selected
     controls.enableRotate = !(isDragging && selectedRoom);
     if (!isDragging || !selectedRoom) return;
-    const gridLockElem = document.getElementById('gridLock');
-    const gridLockChecked = gridLockElem?.checked;
-    if (gridLockChecked) return;
+    if (gridLocked) return;
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
@@ -894,7 +1234,8 @@ window.addEventListener('load', () => {
         });
       }
       // --- Recalculate all exits based on room positions ---
-      if (!gridLockChecked) {
+      if (!gridLocked)
+      {
         recalculateExits();
         if (selectedRoom) updateRoomInfo(selectedRoom);
         // Draw links after recalculation and UI update
@@ -947,6 +1288,17 @@ window.addEventListener('load', () => {
     if (selectedRoom) {
       updateRoomInfo(selectedRoom);
     }
+    // Only pushHistory if position changed during drag
+    if (selectedRoom && dragStartPos) {
+      if (
+        selectedRoom.position.x !== dragStartPos.x ||
+        selectedRoom.position.z !== dragStartPos.z
+      ) {
+        // Only after position is changed
+        pushHistory();
+      }
+    }
+    dragStartPos = null;
   });
 
   window.addEventListener('keydown', (e) => {
@@ -1026,7 +1378,6 @@ window.addEventListener('load', () => {
         levelContainers[currentLevel + LEVEL_OFFSET].add(compassLabels[key]);
       }
     }
-    if (levelSelector) levelSelector.value = currentLevel;
   }
 
   // resize
@@ -1045,39 +1396,114 @@ window.addEventListener('load', () => {
   }
   animate();
 
-  document.getElementById('upButton')?.addEventListener('click', () => {
-    if (currentLevel < 20) switchLevel(currentLevel + 1);
-  });
 
-  document.getElementById('downButton')?.addEventListener('click', () => {
-    if (currentLevel > -20) switchLevel(currentLevel - 1);
-  });
+  // --- Level Wheel Selector ---
+  const MIN_LEVEL = -20;
+  const MAX_LEVEL = 20;
 
-  const levelSelector = document.getElementById('levelSelector');
-  if (levelSelector) {
-    const levels = [
-      ...Array.from({ length: 20 }, (_, i) => 20 - i),
-      0,
-      ...Array.from({ length: 20 }, (_, i) => -(i + 1))
-    ];
-    for (let i of levels) {
-      const option = document.createElement('option');
-      option.value = i;
-      option.textContent = `Level ${i > 0 ? '+' + i : i}`;
-      if (i === 0) option.selected = true;
-      levelSelector.appendChild(option);
+  // Remove the old level selector DOM elements from the page if present
+  const oldLevelSel = document.getElementById('levelSelector');
+  if (oldLevelSel && oldLevelSel.parentNode) oldLevelSel.parentNode.removeChild(oldLevelSel);
+  const upBtn = document.getElementById('upButton');
+  if (upBtn && upBtn.parentNode) upBtn.parentNode.removeChild(upBtn);
+  const downBtn = document.getElementById('downButton');
+  if (downBtn && downBtn.parentNode) downBtn.parentNode.removeChild(downBtn);
+
+  // Create wheel container (if not already present in HTML)
+  let wheelContainer = document.getElementById('levelWheelContainer');
+  if (!wheelContainer) {
+    wheelContainer = document.createElement('div');
+    wheelContainer.id = 'levelWheelContainer';
+    wheelContainer.className = 'level-wheel-container';
+    // Insert next to sidebar or at suitable parent (modify if specific layout needed)
+    const sidebar = document.querySelector('.sidebar') || document.body;
+    sidebar.parentNode.insertBefore(wheelContainer, sidebar.nextSibling);
+  }
+  wheelContainer.innerHTML = `
+    <button id="levelWheelUp" class="wheel-arrow">&#9650;</button>
+    <div id="levelWheel" class="level-wheel"></div>
+    <button id="levelWheelDown" class="wheel-arrow">&#9660;</button>
+  `;
+
+
+  // Render and handle the wheel
+  function renderLevelWheel() {
+    const wheel = document.getElementById('levelWheel');
+    if (!wheel) return;
+    wheel.innerHTML = '';
+    // Render from highest (top, positive) to lowest (bottom, negative)
+    for (let i = currentLevel + 5; i >= currentLevel - 5; i--) {
+      if (i < MIN_LEVEL || i > MAX_LEVEL) continue;
+      const el = document.createElement('div');
+      el.className = 'level-item';
+      if (i === currentLevel) {
+        el.classList.add('center');
+        el.textContent = i === 0 ? '0' : (i > 0 ? '+' + i : i);
+      } else {
+        const fade = Math.abs(i - currentLevel);
+        el.classList.add('fade' + Math.min(fade, 5));
+        el.textContent = i === 0 ? '0' : (i > 0 ? '+' + i : i);
+        el.addEventListener('click', () => {
+          switchLevel(i);
+          renderLevelWheel();
+        });
+      }
+      wheel.appendChild(el);
     }
   }
+  document.getElementById('levelWheelUp').onclick = () => {
+    if (currentLevel < MAX_LEVEL) {
+      switchLevel(currentLevel + 1);
+      renderLevelWheel();
+    }
+  };
+  document.getElementById('levelWheelDown').onclick = () => {
+    if (currentLevel > MIN_LEVEL) {
+      switchLevel(currentLevel - 1);
+      renderLevelWheel();
+    }
+  };
+  // On level change, re-render wheel:
+  const origSwitchLevel = switchLevel;
+  window.switchLevel = function(newLevel) {
+    origSwitchLevel(newLevel);
+    renderLevelWheel();
+  };
+  // Or, just call renderLevelWheel() at the end of your existing switchLevel function if preferred.
 
-  document.getElementById('levelSelector')?.addEventListener('change', (e) => {
-    switchLevel(parseInt(e.target.value));
-  });
+  renderLevelWheel();
+
+  // --- Enable scrolling with mouse wheel on the level wheel ---
+  const levelWheelDiv = document.getElementById('levelWheelContainer');
+  if (levelWheelDiv) {
+    levelWheelDiv.addEventListener('wheel', (event) => {
+      event.preventDefault(); // Prevent page scroll
+      const delta = Math.sign(event.deltaY);
+      if (delta > 0 && currentLevel > MIN_LEVEL) {
+        switchLevel(currentLevel - 1);
+        renderLevelWheel();
+      } else if (delta < 0 && currentLevel < MAX_LEVEL) {
+        switchLevel(currentLevel + 1);
+        renderLevelWheel();
+      }
+    }, { passive: false });
+  }
 
 
   // --- Direction vectors for use in export/import ---
 
   document.getElementById('exportFormatBtn')?.addEventListener('click', () => {
     const exportFormat = document.getElementById('exportFormat')?.value || 'JSON';
+    // Helper: get extension from loaded formats or fallback map
+    function getFormatExtension(formatName) {
+      if (formats && formats[formatName] && formats[formatName].fileExtension) {
+        return formats[formatName].fileExtension.replace(/^\./, '');
+      }
+      // Fallbacks:
+      if (formatName === 'JSON') return 'json';
+      if (formatName === 'ROM' || formatName === 'AW') return 'are';
+      return 'txt';
+    }
     if (exportFormat === 'JSON') {
       const roomsData = [];
       rooms.forEach((level, levelIndex) => {
@@ -1110,11 +1536,17 @@ window.addEventListener('load', () => {
           });
         });
       });
+      const filename = document.getElementById('filename')?.value.trim();
+      const ext = getFormatExtension(exportFormat);
+      let finalFilename = filename;
+      if (!finalFilename.toLowerCase().endsWith('.' + ext)) {
+        finalFilename += '.' + ext;
+      }
       const blob = new Blob([JSON.stringify(roomsData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'map.json';
+      a.download = finalFilename;
       a.click();
       URL.revokeObjectURL(url);
       return;
@@ -1205,25 +1637,25 @@ window.addEventListener('load', () => {
         const usedDirs = new Set();
         for (const key in room.userData.exits) {
           const exit = room.userData.exits[key];
-      // Determine numeric direction index from vector key or existing exit.direction
-      let dirNum = dirVectorToIndex[key];
-      if (exit.direction !== undefined && exit.direction !== null) {
-        if (typeof exit.direction === 'number') {
-          dirNum = exit.direction;
-        } else if (typeof exit.direction === 'string') {
-          // Try mapping a vector string or numeric string to an index
-          const idx = dirVectorToIndex[exit.direction];
-          if (idx !== undefined) {
-            dirNum = idx;
-          } else {
-            const parsed = parseInt(exit.direction, 10);
-            if (!isNaN(parsed)) {
-              dirNum = parsed;
+          // Determine numeric direction index from vector key or existing exit.direction
+          let dirNum = dirVectorToIndex[key];
+          if (exit.direction !== undefined && exit.direction !== null) {
+            if (typeof exit.direction === 'number') {
+              dirNum = exit.direction;
+            } else if (typeof exit.direction === 'string') {
+              // Try mapping a vector string or numeric string to an index
+              const idx = dirVectorToIndex[exit.direction];
+              if (idx !== undefined) {
+                dirNum = idx;
+              } else {
+                const parsed = parseInt(exit.direction, 10);
+                if (!isNaN(parsed)) {
+                  dirNum = parsed;
+                }
+              }
             }
           }
-        }
-      }
-      if (dirNum === undefined || dirNum === null) continue;
+          if (dirNum === undefined || dirNum === null) continue;
           const toRoom = exit.room;
           if (!toRoom || typeof toRoom.userData?.id === 'undefined') continue;
           if (format.uniqueExitDirections) {
@@ -1305,11 +1737,17 @@ ${exitsStr}${extrasStr}End
       output = roomsStr;
     }
 
+    // Add correct extension if missing
+    const ext = getFormatExtension(exportFormat);
+    let finalFilename = filename;
+    if (!finalFilename.toLowerCase().endsWith('.' + ext)) {
+      finalFilename += '.' + ext;
+    }
     const blob = new Blob([output], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename.endsWith('.are') ? filename : `${filename}.are`;
+    a.download = finalFilename;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -1406,6 +1844,9 @@ ${exitsStr}${extrasStr}End
         new THREE.BoxGeometry(1, 1, 1),
         new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
       );
+      // Set shadows for imported rooms
+      box.castShadow = true;
+      box.receiveShadow = true;
       box.position.set(entry.x, 0.5, entry.z);
       box.userData = {
         id: entry.id,
@@ -1444,10 +1885,30 @@ ${exitsStr}${extrasStr}End
     recalculateExits();
     if (typeof drawLinks === 'function') drawLinks();
     switchLevel(currentLevel);
+    pushHistory();
   }
 
   // Initialize visibility
   switchLevel(currentLevel);
+  // After initial scene and UI setup, capture baseline history state
+  pushHistory();
+  updateUndoRedoUI();
+  // --- Undo/Redo UI updater ---
+  function updateUndoRedoUI() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    if (!undoBtn || !redoBtn) return;
+    if (undoStack.length < 2) {
+      undoBtn.classList.add('disabled');
+    } else {
+      undoBtn.classList.remove('disabled');
+    }
+    if (redoStack.length === 0) {
+      redoBtn.classList.add('disabled');
+    } else {
+      redoBtn.classList.remove('disabled');
+    }
+  }
 
   // --- Improved direction utility: strict axis-aligned and diagonal direction calculation ---
   function getDirectionBetweenRooms(from, to) {
@@ -1483,17 +1944,24 @@ ${exitsStr}${extrasStr}End
   // --- Grid selector logic ---
   function populateGridDropdown() {
     const options = [
-      { label: '20 x 20', width: 20, height: 20 },
-      { label: '10 x 30', width: 10, height: 30 },
-      { label: '30 x 10', width: 30, height: 10 },
-      { label: '5 x 40', width: 5, height: 40 },
-      { label: '40 x 5', width: 40, height: 5 },
-      { label: '50 x 50', width: 50, height: 50 },
-      { label: '15 x 25', width: 15, height: 25 },
-      { label: '25 x 15', width: 25, height: 15 },
-      { label: '12 x 35', width: 12, height: 35 },
-      { label: '35 x 12', width: 35, height: 12 },
-    ];
+  // Most common square grids
+  { label: '10 x 10',   width: 10, height: 10 },
+  { label: '15 x 15',   width: 15, height: 15 },
+  { label: '20 x 20',   width: 20, height: 20 },
+  { label: '30 x 30',   width: 30, height: 30 },
+  { label: '40 x 40',   width: 40, height: 40 },
+  { label: '50 x 50',   width: 50, height: 50 },
+  { label: '60 x 60',   width: 60, height: 60 },
+  // Rectangle and specialty grids
+  { label: '10 x 30',   width: 10, height: 30 },
+  { label: '30 x 10',   width: 30, height: 10 },
+  { label: '5 x 40',    width: 5,  height: 40 },
+  { label: '40 x 5',    width: 40, height: 5  },
+  { label: '12 x 35',   width: 12, height: 35 },
+  { label: '35 x 12',   width: 35, height: 12 },
+  { label: '15 x 25',   width: 15, height: 25 },
+  { label: '25 x 15',   width: 25, height: 15 },
+];
     gridSelect.innerHTML = '';
     options.forEach((opt, i) => {
       const option = document.createElement('option');
@@ -1501,8 +1969,12 @@ ${exitsStr}${extrasStr}End
       option.textContent = opt.label;
       gridSelect.appendChild(option);
     });
-    gridSize = { width: options[0].width, height: options[0].height };
-    gridSelect.selectedIndex = 0;
+    const defaultLabel = '20 x 20';
+    let defaultIndex = options.findIndex(opt => opt.label === defaultLabel);
+    if (defaultIndex === -1) defaultIndex = 0; // fallback if not found
+
+    gridSize = { width: options[defaultIndex].width, height: options[defaultIndex].height };
+    gridSelect.selectedIndex = defaultIndex;
     updateGrid(gridSize.width, gridSize.height);
   }
 
@@ -1523,34 +1995,74 @@ ${exitsStr}${extrasStr}End
     document.getElementById('importInput')?.click();
   });
 
-  document.getElementById('roomName')?.addEventListener('input', (e) => {
-    if (selectedRoom) selectedRoom.userData.name = e.target.value;
-  });
-  document.getElementById('roomDesc')?.addEventListener('input', (e) => {
-    if (selectedRoom) selectedRoom.userData.desc = e.target.value;
-  });
+  // Only pushHistory on blur if value changed
+  let lastRoomName = '';
+  let lastRoomDesc = '';
+  const roomNameInput = document.getElementById('roomName');
+  const roomDescInput = document.getElementById('roomDesc');
+  if (roomNameInput) {
+    roomNameInput.addEventListener('focus', (e) => {
+      if (selectedRoom) lastRoomName = selectedRoom.userData.name || '';
+    });
+    roomNameInput.addEventListener('blur', (e) => {
+      if (selectedRoom) {
+        const newVal = e.target.value;
+        if (newVal !== (selectedRoom.userData.name || '')) {
+          selectedRoom.userData.name = newVal;
+          lastRoomName = newVal;
+          pushHistory();
+        }
+      }
+    });
+  }
+  if (roomDescInput) {
+    roomDescInput.addEventListener('focus', (e) => {
+      if (selectedRoom) lastRoomDesc = selectedRoom.userData.desc || '';
+    });
+    roomDescInput.addEventListener('blur', (e) => {
+      if (selectedRoom) {
+        const newVal = e.target.value;
+        if (newVal !== (selectedRoom.userData.desc || '')) {
+          selectedRoom.userData.desc = newVal;
+          lastRoomDesc = newVal;
+          pushHistory();
+        }
+      }
+    });
+  }
 
-  document.getElementById('roomVnum')?.addEventListener('blur', (e) => {
-    if (!selectedRoom) return;
-    const newVnum = parseInt(e.target.value);
-    if (isNaN(newVnum)) return;
+  // Only pushHistory if vnum actually changed
+  const roomVnumInput = document.getElementById('roomVnum');
+  if (roomVnumInput) {
+    let lastVnum = null;
+    roomVnumInput.addEventListener('focus', (e) => {
+      if (selectedRoom) lastVnum = selectedRoom.userData.id;
+    });
+    roomVnumInput.addEventListener('blur', (e) => {
+      if (!selectedRoom) return;
+      const newVnum = parseInt(e.target.value);
+      if (isNaN(newVnum)) return;
 
-    if (newVnum < minVnum || newVnum > maxVnum) {
-      alert(`VNUM must be between ${minVnum} and ${maxVnum}`);
-      e.target.value = selectedRoom.userData.id;
-      return;
-    }
+      if (newVnum < minVnum || newVnum > maxVnum) {
+        alert(`VNUM must be between ${minVnum} and ${maxVnum}`);
+        e.target.value = selectedRoom.userData.id;
+        return;
+      }
 
-    if (newVnum !== selectedRoom.userData.id && usedVnums.has(newVnum)) {
-      alert(`VNUM ${newVnum} is already in use`);
-      e.target.value = selectedRoom.userData.id;
-      return;
-    }
+      if (newVnum !== selectedRoom.userData.id && usedVnums.has(newVnum)) {
+        alert(`VNUM ${newVnum} is already in use`);
+        e.target.value = selectedRoom.userData.id;
+        return;
+      }
 
-    freeVnum(selectedRoom.userData.id);
-    selectedRoom.userData.id = newVnum;
-    usedVnums.add(newVnum);
-  });
+      if (newVnum !== selectedRoom.userData.id) {
+        freeVnum(selectedRoom.userData.id);
+        selectedRoom.userData.id = newVnum;
+        usedVnums.add(newVnum);
+        pushHistory();
+      }
+    });
+  }
 
   const helpPopup = document.getElementById('helpPopup');
   const helpBtn = document.getElementById('helpBtn');
@@ -1573,6 +2085,123 @@ ${exitsStr}${extrasStr}End
       ) {
         helpPopup.style.display = 'none';
       }
+    });
+  }
+
+  const floorToggleBtn = document.getElementById('floorToggleBtn');
+  function updateFloorVisibilityButton() {
+    if (!floorToggleBtn) return;
+    const icon = floorToggleBtn.querySelector('i');
+    if (groundFloorVisible) {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+      floorToggleBtn.title = "Hide ground floor";
+    } else {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+      floorToggleBtn.title = "Show ground floor";
+    }
+  }
+
+  // --- Animate sun (directional light) up/down and fade floor in/out ---
+  function animateSunAndFloor(show, duration = 1200) {
+    if (!light) return;
+    if (window.sunAnimationActive) return;
+    window.sunAnimationActive = true;
+    const startTime = performance.now();
+
+    // Sun positions
+    const east = new THREE.Vector3(15, 2, 0);                  // sunrise
+    const mid = new THREE.Vector3(7, 12, 7);                   // noon (highest)
+    const west = new THREE.Vector3(-15, 2, 0);                 // sunset
+
+    // Floor fade
+    let affectedFloors = [];
+    for (let key in floorMeshes) {
+      if (floorMeshes[key]) affectedFloors.push(floorMeshes[key]);
+    }
+    affectedFloors.forEach(floor => {
+      if (!floor.material.transparent) floor.material.transparent = true;
+    });
+
+    // Animate: Show (east→mid), Hide (mid→west)
+    const from = show ? east : mid;
+    const to   = show ? mid  : west;
+
+    function step(now) {
+      const t = Math.min(1, (now - startTime) / duration);
+
+      // Animate sun
+      light.position.lerpVectors(from, to, t);
+
+      // Animate floor opacity even faster in/out (10% at start/end)
+      let opacity = 1;
+      if (show) {
+        // Fade in extremely fast (first 10%)
+        opacity = t < 0.1 ? (t / 0.1) : 1;
+      } else {
+        // Stay fully visible until last 10%, then fade fast
+        opacity = t < 0.9 ? 1 : 1 - ((t - 0.9) / 0.1);
+      }
+      opacity = Math.max(0, Math.min(1, opacity));
+
+      affectedFloors.forEach(floor => {
+        floor.material.opacity = opacity;
+        floor.visible = opacity > 0.01;
+      });
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // Snap to final positions and values
+        light.position.copy(to);
+        affectedFloors.forEach(floor => {
+          floor.material.opacity = show ? 1 : 0;
+          floor.visible = show;
+        });
+        window.sunAnimationActive = false;
+      }
+    }
+
+    requestAnimationFrame(step);
+  }
+
+  // Function to show/hide the floor mesh with animation
+  function setGroundFloorVisible(visible) {
+    // Only run animation if visibility changes
+    if (groundFloorVisible === visible) return;
+    if (window.sunAnimationActive) return;
+    groundFloorVisible = visible;
+    // For fade in: make sure all are visible at start
+    if (visible) {
+      for (let key in floorMeshes) {
+        if (floorMeshes[key]) {
+          floorMeshes[key].visible = true;
+        }
+      }
+    }
+    animateSunAndFloor(visible);
+    updateFloorVisibilityButton();
+  }
+
+  // Set to hidden on start
+  setGroundFloorVisible(false);
+
+  if (floorToggleBtn) {
+    floorToggleBtn.addEventListener('click', () => {
+      setGroundFloorVisible(!groundFloorVisible);
+    });
+  }
+
+  const gridToggleBtn = document.getElementById('gridToggleBtn');
+  if (gridToggleBtn) {
+    gridToggleBtn.addEventListener('click', () => {
+      gridVisible = !gridVisible;
+      if (grid) {
+        grid.visible = gridVisible;
+      }
+      // Optionally, change icon color or style to reflect state
+      gridToggleBtn.classList.toggle('active', gridVisible);
     });
   }
 });

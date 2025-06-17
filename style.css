@@ -8,6 +8,158 @@ body {
   overflow: hidden;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #fff;
+  padding-top: 0;
+}
+
+.file-controls {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  align-items: center;
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+#sidebar,#levelSelectorBox {
+  z-index: 100;
+}
+
+/* Top/bottom fade using pseudo-element */
+.level-wheel-container {
+  position: fixed;
+  left: 286px;
+  top: 10px;
+  z-index: 150;
+  border-radius: 8px;
+  box-shadow: 0 5px 6px #0000003b, 0 0 10px 2px #fff0 inset, 0 0 0 3px #ffffff08 inset;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 25px;
+  min-height: 190px;
+  overflow: visible;
+}
+
+.level-wheel-container::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  border-radius: 8px;
+  z-index: 2;
+  /* Fade to background at top/bottom, nothing at middle */
+  background:
+    linear-gradient(
+      to bottom,
+      #22243998 18%,   /* match bg, more opaque at very top */
+      #22243900 40%, /* transparent at 40% */
+      #22243900 60%, /* transparent at 60% */
+      #222439a9 82%    /* dark fade again at bottom */
+    );
+  mix-blend-mode: normal;
+}
+
+.wheel-arrow {
+  font-size: 1em;
+  background: none;
+  color: #fff;
+  border: none;
+  margin: 2px 0;
+  cursor: pointer;
+}
+.level-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.level-item {
+  width: 25px;
+  height: 20px;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 7px;
+  margin: 1px 0;
+  font-size: 0.8em;
+  color: #ffffffa1;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: background 0.14s, color 0.18s, opacity 0.18s;
+}
+.level-item.center {
+  background: #4d4d94;
+  color: #ffffffa1;
+  font-size: 1em;
+  font-weight: 500;
+  cursor: default;
+  opacity: 1.0;
+}
+.level-item.fade1 { opacity: 0.70; }
+.level-item.fade2 { opacity: 0.55; }
+.level-item.fade3 { opacity: 0.42; }
+.level-item.fade4 { opacity: 0.30; }
+.level-item.fade5, .level-item.fade6, .level-item.fade7 { opacity: 0.17; }
+.level-item:not(.center):hover {
+  background: #fff3;
+  color: #fff;
+  opacity: 0.99;
+}
+
+canvas {
+  margin: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 900px) {
+  .level-wheel-container {
+    left: 185px;
+    min-width: 40px;
+    padding: 12px 2px;
+  }
+  #floating-level-controls {
+    left: 220px;
+    min-width: 120px;
+    padding: 18px 6px;
+  }
+  #sidebar {
+    min-width: 160px;
+    width: 170px;
+    font-size: 14px;
+  }
+  .file-controls {
+    right: 6px;
+    gap: 6px;
+  }
+}
+
+#gridToggleBtn {
+  background: none;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  padding: 0;
+  min-width: 30px;
+}
+
+.editor-wrapper  {
+  display: flex;
+  align-items: flex-start;
+}
+
+#sidebar {
+  width: 290px;
+  min-width: 220px;
+  max-width: 350px;
+  margin-left: 10px;
 }
 
 #controls {
@@ -25,17 +177,6 @@ body {
   margin-bottom: 10px;
 }
 
-.level-controls,
-.file-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.file-controls {
-  margin-left: auto;
-}
-
 canvas {
   display: block;
 }
@@ -45,9 +186,9 @@ canvas {
   font-size: 12px;
   background-color: #3a3a4d;
   color: #ffffff;
-  border: none;
+  border: 1px #1f1f2f;
   border-radius: 6px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.11);
   transition: background-color 0.2s ease, transform 0.1s ease;
   cursor: pointer;
   font-family: system-ui, sans-serif;
@@ -97,7 +238,7 @@ canvas {
   flex: 1;
 }
 
-#area-info input, #area-info select {
+#tool-info input, #tool-info select {
   padding: 4px 6px;
   border: 1px solid #4d4d94;
   border-radius: 4px;
@@ -118,40 +259,42 @@ canvas {
   flex-direction: column;
 }
 
-/* #area-info dynamic height for tabs/toggle */
-#area-info {
+/* #tool-info dynamic height for tabs/toggle */
+#tool-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
   position: fixed;
-  top: 50px;
-  height:335px;
+  top: 10px;
   width: 250px;
   background-color: #3a3a4dae;
   padding: 10px;
   transition: height 0.3s ease;
-  overflow: hidden;
+  overflow: visible;         /* changed from hidden */
+  min-height: 160px;
+  max-height: 90vh;
+  height: auto;              /* let content determine height */
 }
 
-#area-info.expanded-area {
-  height: 335px; /* Adjust based on Area tab content height */
+#tool-info.expanded-area {
+  height: 350px; /* Adjust based on Area tab content height */
 }
 
-#area-info.expanded-room {
+#tool-info.expanded-room {
   height: 660px; /* Adjust based on Room tab content height */
 }
 
-#area-info.collapsed {
+#tool-info.collapsed {
   height: 160px; /* Only show top part when collapsed */
 }
 
-#area-info label {
+#tool-info label {
   font-weight: bold;
   margin-bottom: 2px;
 }
 
-#area-info input {
+#tool-info input {
   padding: 4px 6px;
   border: 1px solid #4d4d94;
   border-radius: 4px;
@@ -161,22 +304,22 @@ canvas {
   margin-bottom: 10px;
 }
 
-#area-info input:focus {
+#tool-info input:focus {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d94;
 }
 
-#area-info > div:not(.vnum-row) {
+#tool-info > div:not(.vnum-row) {
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
-#area-info:hover {
+#tool-info:hover {
   background-color: #3a3a4dae;
 }
 
-#area-info:focus {
+#tool-info:focus {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d94;
 }
@@ -218,7 +361,7 @@ canvas {
   z-index: 10;
 }
 
-#area-info textarea.full-width {
+#tool-info textarea.full-width {
   resize: none;
   height: 100px;
   width: 100%;
@@ -232,7 +375,7 @@ canvas {
   margin-top: 5px;
 }
 
-#area-info textarea.full-width:focus {
+#tool-info textarea.full-width:focus {
   outline: none;
   box-shadow: 0 0 0 2px #4d4d94;
 }
@@ -314,20 +457,20 @@ input[type="number"]::part(decrement) {
 }
 
 /* Scrollbar styling: thin scrollbar for modern browsers */
-#area-info::-webkit-scrollbar {
+#tool-info::-webkit-scrollbar {
   width: 6px;
 }
 
-#area-info::-webkit-scrollbar-thumb {
+#tool-info::-webkit-scrollbar-thumb {
   background-color: #666;
   border-radius: 4px;
 }
 
-#area-info::-webkit-scrollbar-track {
+#tool-info::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
-#area-info {
+#tool-info {
   scrollbar-width: thin;          /* Firefox */
   scrollbar-color: #141424 transparent;
 }
@@ -367,9 +510,9 @@ input[type="number"]::part(decrement) {
 /* 4d4d94 */
 
 #areaInfoContainer {
-  max-height: 1000px;
+  position: relative;
+  transition: height 0.35s cubic-bezier(0.42,0,0.58,1);
   overflow: hidden;
-  transition: max-height 0.3s ease;
 }
 
 #areaInfoContainer.hidden {
@@ -406,6 +549,16 @@ input[type="number"]::part(decrement) {
 }
 
 .tab-content {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  top: 0;
+  transition: opacity 0.25s cubic-bezier(0.42,0,0.58,1);
+}
+
+.tab-content {
   display: none;
 }
 
@@ -413,7 +566,70 @@ input[type="number"]::part(decrement) {
   display: block;
 }
 
+.tab-content.active {
+  opacity: 1;
+  pointer-events: auto;
+  position: static;
+  transition: opacity 0.25s cubic-bezier(0.42,0,0.58,1);
+}
+
 #toggleAreaInfoBtn {
   height: 22px;
   min-width: 22px;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.toolbar .ui-element {
+  min-width: 30px;
+  height: 30px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lock button border color */
+#fitViewBtn.locked {
+  /*border: 2px solid #ff3b3b63;*/
+  color: #e74c3c;
+  border-radius: 4px;
+}
+#fitViewBtn.unlocked {
+  /*order: 2px solid #20d52059;*/
+  border-radius: 4px;
+  color: #2ecc71;
+}
+
+/* Remove focus styles for toolbar buttons */
+.toolbar .ui-element:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.ui-element.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+.toolbar .fa-solid,
+.toolbar .fa-regular,
+.toolbar .fa-light,
+.toolbar .fa-duotone {
+  font-size: 15px;   /* Change to your preferred size */
+  width: 1em;        /* Ensures the button stays square if needed */
+  height: 1em;
+  line-height: 1;
+  vertical-align: middle;
+  /* Optional: */
+  /* color: #fff; */
 }

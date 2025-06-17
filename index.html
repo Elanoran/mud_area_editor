@@ -3,109 +3,118 @@
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <title>Room Editor</title>
 </head>
-<div id="controls">
-  <div class="level-controls">
-    <button id="upButton" class="ui-element">▲</button>
-    <button id="downButton" class="ui-element">▼</button>
-    <select id="levelSelector" style="width: 174px;" class="ui-element"></select>
-  </div>
-
+<body>
   <div class="file-controls">
     <button id="exportFormatBtn" class="ui-element">Export As</button>
-    <select id="exportFormat" class="ui-element">
-      <option value="JSON" selected>JSON</option>
-      <option value="ROM">ROM</option>
-      <option value="AW">AW</option>
-    </select>
+    <select id="exportFormat" class="ui-element"></select>
     <button id="importJsonBtn" class="ui-element">Import JSON</button>
     <input type="file" id="importInput" accept=".json" style="display:none">
     <button id="helpBtn" class="ui-element">Help</button>
   </div>
-<div id="area-info" class="ui-element">
-    <div class="field-group">
-    <label>Grid:<br>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <select id="gridSelect" class="full-width"></select>
-        <label style="display: flex; align-items: center; gap: 4px;">
-          <input type="checkbox" id="gridLock" checked>
-          Lock
-        </label>
-      </div>
-    </label>
-  </div>
-  <div class="field-group">
-    <label for="roomColorOptions">Room Color:</label><br>
-    <div id="roomColorOptions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-      <button class="room-color-option" data-color="#e74c3c" style="background:#e74c3c;" title="Red"></button>
-      <button class="room-color-option" data-color="#f39c12" style="background:#f39c12;" title="Orange"></button>
-      <button class="room-color-option" data-color="#f1c40f" style="background:#f1c40f;" title="Yellow"></button>
-      <button class="room-color-option" data-color="#2ecc71" style="background:#2ecc71;" title="Green"></button>
-      <button class="room-color-option" data-color="#3498db" style="background:#3498db;" title="Blue"></button>
-      <button class="room-color-option" data-color="#9b59b6" style="background:#9b59b6;" title="Purple"></button>
-      <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
-      <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
-    </div>
-    <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
-  </div>
-  <div class="tab-row">
-    <div class="tab-header" style="flex-grow: 1;">
-      <button class="tab-button active" data-tab="areaTab">Area</button>
-      <button class="tab-button" data-tab="roomTab">Room</button>
-    </div>
-  </div>
+  <div class="editor-wrapper">
+    <div id="sidebar">
+      <div id="tool-info" class="ui-element">
+        <div class="toolbar" style="display: flex; gap: 6px; margin-bottom: 0;flex-direction: initial;">
+          <button id="undoBtn" class="ui-element" title="Undo">↺</button>
+          <button id="redoBtn" class="ui-element" title="Redo">↻</button>
+          <button id="cleanSceneBtn" class="ui-element" title="Clean Scene"><i class="fa-solid fa-broom"></i></button>
+          <button id="deleteRoomBtn" class="ui-element" title="Delete Room"><i class="fa-solid fa-trash"></i></button>
+          <button id="floorToggleBtn" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
+          <button id="fitViewBtn" class="ui-element" title="Lock"><i class="fa-solid fa-lock"></i></div>
+        <div class="field-group">
+          <label>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button id="gridToggleBtn" class="ui-element" title="Toggle Grid">
+                <i class="fa-solid fa-table-cells-large" style="font-size: 30px; color: #4d4d94;margin-top: 4px;"></i>
+              </button>
+              <select id="gridSelect" class="full-width"></select>
+            </div>
+          </label>
+        </div>
+        <div class="field-group">
+          <label for="roomColorOptions"></label>
+          <div id="roomColorOptions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
+            <button class="room-color-option" data-color="#e74c3c" style="background:#e74c3c;" title="Red"></button>
+            <button class="room-color-option" data-color="#f39c12" style="background:#f39c12;" title="Orange"></button>
+            <button class="room-color-option" data-color="#f1c40f" style="background:#f1c40f;" title="Yellow"></button>
+            <button class="room-color-option" data-color="#2ecc71" style="background:#2ecc71;" title="Green"></button>
+            <button class="room-color-option" data-color="#3498db" style="background:#3498db;" title="Blue"></button>
+            <button class="room-color-option" data-color="#9b59b6" style="background:#9b59b6;" title="Purple"></button>
+            <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
+            <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
+          </div>
+          <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
+        </div>
+        <div class="tab-row">
+          <div class="tab-header" style="flex-grow: 1;">
+            <button class="tab-button active" data-tab="areaTab">Area</button>
+            <button class="tab-button" data-tab="roomTab">Room</button>
+          </div>
+        </div>
 
-  <div id="areaInfoContainer">
-    <div id="areaTab" class="tab-content active">
-      <div class="field-group">
-        <label>Area Name:<br>
-          <input type="text" id="areaName" class="full-width">
-        </label>
-      </div>
-      <div class="field-group">
-        <label>Filename:<br>
-          <input type="text" id="filename" class="full-width">
-        </label>
-      </div>
-      <div class="vnum-row">
-        <div class="vnum-field">
-          <label>VNUM Min:<br>
-            <input type="number" id="vnumMin" class="full-width">
-          </label>
-        </div>
-        <div class="vnum-field">
-          <label>VNUM Max:<br>
-            <input type="number" id="vnumMax" class="full-width">
-          </label>
+        <div id="areaInfoContainer">
+          <div id="areaTab" class="tab-content active">
+            <div class="field-group">
+              <label>Area Name:<br>
+                <input type="text" id="areaName" class="full-width">
+              </label>
+            </div>
+            <div class="field-group">
+              <label>Filename:<br>
+                <div style="display: flex; align-items: center;">
+                  <input type="text" id="filename" class="full-width" style="flex: 1;">
+                  <span id="filenameExt" style="margin-left: 5px; color: #aaa; min-width: 30px;">.json</span>
+                </div>
+              </label>
+            </div>
+            <div class="vnum-row">
+              <div class="vnum-field">
+                <label>VNUM Min:<br>
+                  <input type="number" id="vnumMin" class="full-width">
+                </label>
+              </div>
+              <div class="vnum-field">
+                <label>VNUM Max:<br>
+                  <input type="number" id="vnumMax" class="full-width">
+                </label>
+              </div>
+            </div>
+          </div>
+          <div id="roomTab" class="tab-content">
+            <div class="field-group">
+              <label>
+                VNUM:
+                <span id="roomVnumCoords" style="margin-left: 10px; font-weight: normal; color: #939393;"></span><br>
+                <input type="number" id="roomVnum" class="full-width">
+              </label>
+            </div>
+            <div class="field-group">
+              <label>Name:<br>
+                <input type="text" id="roomName" class="full-width">
+              </label>
+            </div>
+            <div class="field-group">
+              <label>Description:<br>
+                <textarea id="roomDesc" class="full-width" rows="4"></textarea>
+              </label>
+            </div>
+            <div class="field-group">
+              <label>Exits:</label>
+              <ul id="roomExitsList" class="full-width" style="margin-top: 6px; padding-left: 20px;"></ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div id="roomTab" class="tab-content">
-      <div class="field-group">
-        <label>
-          VNUM:
-          <span id="roomVnumCoords" style="margin-left: 10px; font-weight: normal; color: #ccc;"></span><br>
-          <input type="number" id="roomVnum" class="full-width">
-        </label>
-      </div>
-      <div class="field-group">
-        <label>Name:<br>
-          <input type="text" id="roomName" class="full-width">
-        </label>
-      </div>
-      <div class="field-group">
-        <label>Description:<br>
-          <textarea id="roomDesc" class="full-width" rows="4"></textarea>
-        </label>
-      </div>
-      <div class="field-group">
-        <label>Exits:</label>
-        <ul id="roomExitsList" class="full-width" style="margin-top: 6px; padding-left: 20px;"></ul>
-      </div>
+    <div id="levelWheelContainer" class="level-wheel-container">
+      <button id="levelWheelUp" class="wheel-arrow">&#9650;</button>
+      <div id="levelWheel" class="level-wheel"></div>
+      <button id="levelWheelDown" class="wheel-arrow">&#9660;</button>
     </div>
   </div>
-</div>
   <div id="helpPopup" class="ui-element" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#333; padding:20px; border:1px solid #888; z-index:1000; color:white;">
     <button id="helpClose" style="position:absolute; top:5px; right:8px; font-size:16px; background:none; border:none; color:white; cursor:pointer;">✕</button>
     <h2>Editor Help</h2>
@@ -113,12 +122,14 @@
     <ul>
       <li>Use the grid to place rooms on different levels.</li>
       <li><span class="key">Shift</span> + <span class="key">Left-click</span> on the grid to add a room.</li>
-      <li><span class="key">Shift</span> + <span class="key">Left-click</span> an existing room to remove it.</li>
+      <li>Mark an existing room and click the delete button in the toolbar to remove it.</li>
       <li><span class="key">click</span> a room to select it for linking.</li>
       <li><span class="key">Shift</span> + <span class="key">Left-click</span> another room to create or remove a directional link between them.</li>
+      <li>After a room has been placed you can click the lock button toolbar to freely move a selected rooms.</li>
       <li>Use the inputs on the left to edit room VNUM, name, and description.</li>
       <li>Use the dropdowns and file buttons to import/export your layout.</li>
       <li>Pick a color below the Grid section to define the color of new rooms, or recolor a selected room.</li>
+      <li>If you made a mistake or want to redo an action, click redo or undo buttons.</li>
     </ul>
   </div>
   <script type="module" src="editor.js" defer></script>
