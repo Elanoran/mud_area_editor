@@ -273,6 +273,33 @@ window.addEventListener('load', () => {
     };
   }
 
+  // --- Utility: create a floating label (sprite) for a room ---
+  function makeRoomLabel(text) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 320;
+    canvas.height = 64;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.font = 'bold 24px sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = '#fff';
+    context.shadowColor = 'black';
+    context.shadowBlur = 4;
+    context.fillText(text, canvas.width / 2, canvas.height / 2);
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(3, 0.6, 1);
+    sprite.renderOrder = 9999;
+    return sprite;
+  }
+
   function updateCompassLabels(grid) {
     if (!grid?.geometry?.parameters) return;
 
@@ -684,6 +711,9 @@ window.addEventListener('load', () => {
   let selectedRoom = null;
   let selectedRoomColor = '#8888ff';
   let isDragging = false;
+  // --- Hover label state ---
+  let hoverLabel = null;
+  let hoverRoom = null;
   // Room color selector logic
   document.querySelectorAll('.room-color-option').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1181,7 +1211,64 @@ window.addEventListener('load', () => {
     }
   }
 
-  window.addEventListener('pointermove', (event) => {
+
+  // --- Room hover label logic ---
+    // Remove any previous pointermove hover label logic and deduplicate
+  // --- Room hover label logic (deduplicated, robust) ---
+  renderer.domElement.addEventListener('pointermove', function (event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    // Only show label for rooms on currentLevel, currentLevel+1, currentLevel-1
+    const levelRange = [currentLevel + LEVEL_OFFSET, currentLevel + 1 + LEVEL_OFFSET, currentLevel - 1 + LEVEL_OFFSET];
+    const candidates = [];
+    for (const idx of levelRange) {
+      if (rooms[idx]) candidates.push(...rooms[idx]);
+    }
+    const intersects = raycaster.intersectObjects(candidates);
+    if (intersects.length > 0) {
+      const room = intersects[0].object;
+      if (hoverRoom !== room) {
+        // Remove any previous label
+        if (hoverLabel) {
+          if (hoverLabel.parent) hoverLabel.parent.remove(hoverLabel);
+          hoverLabel.material.map.dispose();
+          hoverLabel.material.dispose();
+          hoverLabel = null;
+        }
+        hoverRoom = room;
+        const name = room.userData.name || '';
+        const vnum = room.userData.id != null ? String(room.userData.id) : '';
+        const labelText = `${name ? name + ' ' : ''}(${vnum})`;
+        hoverLabel = makeRoomLabel(labelText);
+        hoverLabel.position.copy(room.position);
+        hoverLabel.position.y += 1.2; // raise label above room
+        levelContainers[room.userData.level + LEVEL_OFFSET].add(hoverLabel);
+      }
+    } else {
+      // Pointer is not over any room
+      if (hoverLabel) {
+        if (hoverLabel.parent) hoverLabel.parent.remove(hoverLabel);
+        hoverLabel.material.map.dispose();
+        hoverLabel.material.dispose();
+        hoverLabel = null;
+      }
+      hoverRoom = null;
+    }
+  });
+
+  // Remove label when mouse leaves the canvas
+  renderer.domElement.addEventListener('mouseleave', () => {
+    if (hoverLabel) {
+      if (hoverLabel.parent)
+        hoverLabel.parent.remove(hoverLabel);
+      hoverLabel.material.map.dispose();
+      hoverLabel.material.dispose();
+      hoverLabel = null;
+    }
+    hoverRoom = null;
+
     // Only disable OrbitControls rotation while dragging and a node is selected
     controls.enableRotate = !(isDragging && selectedRoom);
     if (!isDragging || !selectedRoom) return;
