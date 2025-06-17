@@ -3,6 +3,12 @@ html, body {
   margin: 0;
 }
 
+:root {
+  --compass-north-color: #e74c3c;   /* Red */
+  --compass-south-color: #2ecc71;   /* Green */
+  --compass-default-color: #fff;    /* White */
+}
+
 body {
   margin: 0;
   overflow: hidden;

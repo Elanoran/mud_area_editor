@@ -147,6 +147,8 @@ window.addEventListener('load', () => {
   });
   let formatsData = {};
   let formats = {};
+  // Track active puffs globally
+  let activePuffs = [];
 
   // Fetch formats.json after window load
   fetch('./formats.json?nocache=' + Date.now())
@@ -243,13 +245,7 @@ window.addEventListener('load', () => {
       context.font = 'bold 28px sans-serif';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
-      if (text === 'N') {
-        context.fillStyle = 'red';
-      } else if (text === 'S') {
-        context.fillStyle = 'green';
-      } else {
-        context.fillStyle = 'white';
-      }
+      context.fillStyle = getCompassColor(text);
       context.fillText(text, canvas.width / 2, canvas.height / 2);
 
       const texture = new THREE.CanvasTexture(canvas);
@@ -263,6 +259,15 @@ window.addEventListener('load', () => {
       sprite.scale.set(2, 1, 1);
       sprite.renderOrder = 999; // always on top!
       return sprite;
+    }
+    function getCompassColor(text) {
+      if (text === 'N') {
+        return getComputedStyle(document.documentElement).getPropertyValue('--compass-north-color').trim() || 'red';
+      } else if (text === 'S') {
+        return getComputedStyle(document.documentElement).getPropertyValue('--compass-south-color').trim() || 'green';
+      } else {
+        return getComputedStyle(document.documentElement).getPropertyValue('--compass-default-color').trim() || 'white';
+      }
     }
     // Create meshes for each direction
     return {
@@ -385,18 +390,52 @@ window.addEventListener('load', () => {
       room.outlineMesh.material.dispose();
       delete room.outlineMesh;
     }
-    // Free vnum, remove mesh
+    // Free vnum, animate falling and explosion instead of immediate removal
     freeVnum(room.userData.id);
-    levelContainers[levelIndex].remove(room);
     const idx = rooms[levelIndex].indexOf(room);
     if (idx !== -1) rooms[levelIndex].splice(idx, 1);
     selectedRoom = null;
+    // Animate falling and explosion
+    animateRoomFallAndExplode(room, levelContainers[levelIndex]);
     // Update visuals
     recalculateExits();
     if (typeof drawLinks === 'function') drawLinks();
     updateRoomInfo(null);
     pushHistory();
   });
+
+  // --- Animate room falling and explosion effect ---
+  function animateRoomFallAndExplode(roomMesh, levelContainer) {
+    levelContainer.remove(roomMesh);
+    scene.add(roomMesh);
+
+    // Start at current y
+    let startY = roomMesh.position.y;
+    let targetY = startY - 1; // Always fall one full unit
+    let velocity = 0;
+    let gravity = -0.020; // lower = slower fall
+    let frame = 0;
+    let maxFrames = 240;
+
+    function fallFrame() {
+      velocity += gravity;
+      if (velocity < -0.20) velocity = -0.20; // limit max fall speed
+      roomMesh.position.y += velocity;
+      frame++;
+      if (roomMesh.position.y <= targetY || frame >= maxFrames) {
+        roomMesh.position.y = targetY;
+        spawnFireAndSmoke(roomMesh.position.clone(), scene);
+        setTimeout(() => {
+          scene.remove(roomMesh);
+          roomMesh.geometry.dispose();
+          roomMesh.material.dispose();
+        }, 700);
+        return;
+      }
+      requestAnimationFrame(fallFrame);
+    }
+    fallFrame();
+  }
 
   // Clean Scene button
   const cleanBtn = document.getElementById('cleanSceneBtn');
@@ -1478,7 +1517,22 @@ window.addEventListener('load', () => {
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
-    // No need to call updateCompassLabels(grid) every frame; it's called in updateGrid().
+
+    // Animate and clean up smoke puffs
+    for (let i = activePuffs.length - 1; i >= 0; i--) {
+      const puff = activePuffs[i];
+      puff.userData.puffLife += 0.016;
+      puff.material.opacity *= 0.93; // fade out
+      puff.scale.multiplyScalar(1.05 + 0.01 * Math.random());
+      puff.position.y += 0.012 * puff.userData.puffSpeed;
+      if (puff.material.opacity < 0.05) {
+        scene.remove(puff);
+        puff.geometry.dispose();
+        puff.material.dispose();
+        activePuffs.splice(i, 1);
+      }
+    }
+
     renderer.render(scene, camera);
   }
   animate();
@@ -2291,4 +2345,100 @@ ${exitsStr}${extrasStr}End
       gridToggleBtn.classList.toggle('active', gridVisible);
     });
   }
+
+  function spawnSmokePuff(pos, scene, count = 6) {
+    // Fire puffs
+    for (let i = 0; i < fireCount; i++) {
+      const geo = new THREE.SphereGeometry(0.09 + Math.random() * 0.10, 10, 10);
+      const mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(0.08 + 0.10 * Math.random(), 1, 0.55 + Math.random() * 0.15),
+        transparent: true,
+        opacity: 0.8,
+        emissive: 0xff6600,
+        emissiveIntensity: 1.1,
+        roughness: 0.5,
+        metalness: 0,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(pos);
+      mesh.position.x += (Math.random() - 0.5) * 0.20;
+      mesh.position.y += 0.38 + Math.random() * 0.16;
+      mesh.position.z += (Math.random() - 0.5) * 0.20;
+      mesh.userData = { puffLife: 0, puffSpeed: 0.5 + Math.random() * 0.5, isFire: true };
+
+      scene.add(mesh);
+      activePuffs.push(mesh);
+    }
+    // Smoke puffs
+    for (let i = activePuffs.length - 1; i >= 0; i--) {
+      const puff = activePuffs[i];
+      puff.userData.puffLife += 0.016;
+      if (puff.userData.isFire) {
+        // Fire puffs: fast, fade+shrink+orange
+        puff.material.opacity *= 0.84;
+        puff.material.emissiveIntensity *= 0.90;
+        puff.scale.multiplyScalar(1.09 + 0.01 * Math.random());
+        puff.position.y += 0.016 * puff.userData.puffSpeed;
+      } else {
+        // Smoke puffs: slow, fade+grow+drift
+        puff.material.opacity *= 0.93;
+        puff.scale.multiplyScalar(1.04 + 0.01 * Math.random());
+        puff.position.y += 0.012 * puff.userData.puffSpeed;
+      }
+      if (puff.material.opacity < 0.05) {
+        scene.remove(puff);
+        puff.geometry.dispose();
+        puff.material.dispose();
+        activePuffs.splice(i, 1);
+      }
+    }
+  }
+
+  function spawnFireAndSmoke(pos, scene, fireCount = 6, smokeCount = 6) {
+  // Fire puffs
+  for (let i = 0; i < fireCount; i++) {
+    const geo = new THREE.SphereGeometry(0.09 + Math.random() * 0.10, 10, 10);
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.08 + 0.10 * Math.random(), 1, 0.55 + Math.random() * 0.15),
+      transparent: true,
+      opacity: 0.8,
+      emissive: 0xff6600,
+      emissiveIntensity: 1.1,
+      roughness: 0.5,
+      metalness: 0,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.position.x += (Math.random() - 0.5) * 0.20;
+    mesh.position.y += 0.38 + Math.random() * 0.16;
+    mesh.position.z += (Math.random() - 0.5) * 0.20;
+    mesh.userData = { puffLife: 0, puffSpeed: 0.5 + Math.random() * 0.5, isFire: true };
+
+    scene.add(mesh);
+    activePuffs.push(mesh);
+  }
+  // Smoke puffs
+  for (let i = 0; i < smokeCount; i++) {
+    const geo = new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 12, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xcccccc,
+      transparent: true,
+      opacity: 0.45 + Math.random() * 0.25,
+      roughness: 1,
+      metalness: 0,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.position.x += (Math.random() - 0.5) * 0.25;
+    mesh.position.y += 0.44 + Math.random() * 0.23;
+    mesh.position.z += (Math.random() - 0.5) * 0.25;
+    mesh.userData = { puffLife: 0, puffSpeed: 0.5 + Math.random() * 0.5, isFire: false };
+
+    scene.add(mesh);
+    activePuffs.push(mesh);
+  }
+}
 });
