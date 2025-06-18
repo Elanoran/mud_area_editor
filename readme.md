@@ -6,6 +6,9 @@ Dive into classic MUD world building with a "modern" twist! This browser based a
 
 ![Screenshot of the MUD Area Editor](Screenshot.png)
 
+## Demo
+[https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
+
 ## Supported Features
 
 - Grid-based room layout per level
