@@ -209,6 +209,92 @@ window.addEventListener('load', () => {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x222233);
 
+  // --- Surface Materials ---
+  const SURFACE_MATERIALS = {
+    grass: {
+      folder: 'assets/textures/Grass001_1K_Color',
+      base:  'Grass001_1K-JPG',
+      type:  'texture'
+    },
+    asphalt: {
+      folder: 'assets/textures/Asphalt025C_1K-JPG',
+      base:  'Asphalt025C_1K-JPG',
+      type:  'texture'
+    },
+    fabric: {
+      folder: 'assets/textures/Fabric066_1K-JPG',
+      base:  'Fabric066_1K-JPG',
+      type:  'texture'
+    },
+    blue: {
+      color: 0x3498db,
+      type: 'color'
+    },
+    sand: {
+      color: 0xf7e9b5,
+      type: 'color'
+    },
+    dirt: {
+      color: 0x8d6748,
+      type: 'color'
+    },
+    charcoal: {
+      color: 0x443e3e,
+      type: 'color'
+    }
+  };
+
+  // --- Surface Texture Loader Utility ---
+  let currentSurface = 'charcoal';
+
+  function loadSurfaceTextures(surfaceName) {
+    const mat = SURFACE_MATERIALS[surfaceName];
+    if (!mat) throw new Error('Unknown material: ' + surfaceName);
+
+    // Handle color-only
+    if (mat.type === 'color') return { color: mat.color, type: 'color' };
+
+    // Else, texture
+    const loader = new THREE.TextureLoader();
+    const out = {};
+    out.color = loader.load(`${mat.folder}/${mat.base}_Color.jpg`);
+    out.normal = loader.load(`${mat.folder}/${mat.base}_NormalDX.jpg`);
+    out.rough = loader.load(`${mat.folder}/${mat.base}_Roughness.jpg`);
+    loader.load(`${mat.folder}/${mat.base}_AmbientOcclusion.jpg`, t => out.ao = t, undefined, () => out.ao = null);
+    loader.load(`${mat.folder}/${mat.base}_Displacement.jpg`, t => out.disp = t, undefined, () => out.disp = null);
+    [out.color, out.normal, out.rough].forEach(tex => {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(8, 8);
+    });
+    out.type = 'texture';
+    return out;
+  }
+  let surfaceTextures = loadSurfaceTextures(currentSurface);
+
+  function createSurfaceMaterial() {
+    if (surfaceTextures.type === 'color') {
+      return new THREE.MeshStandardMaterial({
+        color: surfaceTextures.color,
+        roughness: 1.0
+      });
+    }
+    // Otherwise use texture as before
+    const params = {
+      map: surfaceTextures.color,
+      normalMap: surfaceTextures.normal,
+      roughnessMap: surfaceTextures.rough,
+      roughness: 1.0,
+      color: 0xffffff
+    };
+    if (surfaceTextures.ao) params.aoMap = surfaceTextures.ao;
+    if (surfaceTextures.disp) {
+      params.displacementMap = surfaceTextures.disp;
+      params.displacementScale = 0.25;
+      params.displacementBias = 0.0;
+    }
+    return new THREE.MeshStandardMaterial(params);
+  }
+
   const MAX_LEVELS = 41;
   let currentLevel = 0;
   const levelContainers = Array.from({ length: MAX_LEVELS }, () => new THREE.Group());
@@ -600,50 +686,34 @@ window.addEventListener('load', () => {
   let grid;
   let gridSize = { width: 20, height: 20 };
   const gridSelect = document.getElementById('gridSelect');
-  function buildCustomGrid(rows, cols, spacing = 1) {
-    const group = new THREE.Group();
-    const material = new THREE.LineBasicMaterial({ color: 0x8888ff, transparent: true, opacity: 0.3 });
-
-    for (let i = 0; i <= rows; i++) {
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, i * spacing),
-        new THREE.Vector3(cols * spacing, 0, i * spacing)
-      ]);
-      const line = new THREE.Line(geometry, material);
-      group.add(line);
-    }
-
-    for (let j = 0; j <= cols; j++) {
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(j * spacing, 0, 0),
-        new THREE.Vector3(j * spacing, 0, rows * spacing)
-      ]);
-      const line = new THREE.Line(geometry, material);
-      group.add(line);
-    }
-
-    return group;
-  }
 
   function updateGrid(width, height) {
-    // Remove any previous grid
-    if (grid) {
-      levelContainers.forEach(g => g.remove(grid));
-    }
+  // Remove any previous grid
+  if (grid) {
+    levelContainers.forEach(g => g.remove(grid));
+  }
 
-    // Remove ALL previous floor meshes from ALL levels, not just the current
-    for (let key in floorMeshes) {
-      if (floorMeshes[key]) {
-        levelContainers[key].remove(floorMeshes[key]);
-        floorMeshes[key].geometry.dispose();
-        floorMeshes[key].material.dispose();
-        delete floorMeshes[key];
-      }
+  // Remove ALL previous floor meshes from ALL levels, not just the current
+  for (let key in floorMeshes) {
+    if (floorMeshes[key]) {
+      levelContainers[key].remove(floorMeshes[key]);
+      floorMeshes[key].geometry.dispose();
+      floorMeshes[key].material.dispose();
+      delete floorMeshes[key];
     }
+  }
 
     // Create new floor mesh for the current level only
-    const floorGeometry = new THREE.PlaneGeometry(width, height);
-    const floorMaterial = new THREE.MeshStandardMaterial({ color: groundFloorColor });
+    // Use high subdivisions for detailed displacement
+    const floorGeometry = new THREE.PlaneGeometry(width, height, 120, 120);
+    const floorMaterial = createSurfaceMaterial();
+    // If AO map is present, set uv2 for geometry (required for AO/displacement)
+    if (floorMaterial.aoMap) {
+      // Ensure geometry has uv2 (Three.js requires this for AO/displacement)
+      if (!floorGeometry.attributes.uv2) {
+        floorGeometry.setAttribute('uv2', new THREE.BufferAttribute(floorGeometry.attributes.uv.array, 2));
+      }
+    }
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.set(0, 0, 0);
@@ -707,13 +777,20 @@ window.addEventListener('load', () => {
     if (lowestIdx === null) return; // no rooms anywhere
 
     // Create and add new floor mesh at the lowest room level
-    const floorGeometry = new THREE.PlaneGeometry(width, height);
-    const floorMaterial = new THREE.MeshStandardMaterial({ color: groundFloorColor });
+    // Use high subdivisions for displacement realism
+    const floorGeometry = new THREE.PlaneGeometry(width, height, 120, 120);
+    const floorMaterial = createSurfaceMaterial();
+    // If AO map is present, set uv2 for geometry (required for AO/displacement)
+    if (floorMaterial.aoMap) {
+      if (!floorGeometry.attributes.uv2) {
+        floorGeometry.setAttribute('uv2', new THREE.BufferAttribute(floorGeometry.attributes.uv.array, 2));
+      }
+    }
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.set(0, 0, 0);
     floorMesh.receiveShadow = true;
-    floorMesh.visible = groundFloorVisible; // <-- Add this line!
+    floorMesh.visible = groundFloorVisible;
     levelContainers[lowestIdx].add(floorMesh);
     floorMeshes[lowestIdx] = floorMesh;
   }
@@ -2600,119 +2677,29 @@ window.addEventListener('load', () => {
     activePuffs.push(mesh);
   }
 
-  // --- Animate a breaking (shattering) line effect when a link is removed ---
-function animateBreakingLink(positionArray) {
-  // Get the two endpoints of the line
-  const [x1, y1, z1, x2, y2, z2] = positionArray;
-  // Create several fragments to "fly away"
-  for (let i = 0; i < 8; i++) {
-    const material = new THREE.LineBasicMaterial({
-      color: 0xff5555,
-      transparent: true,
-      opacity: 0.7
-    });
-    const angle = Math.random() * 2 * Math.PI;
-    const len = 0.22 + Math.random() * 0.12;
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-    const midZ = (z1 + z2) / 2;
-    // Fragment points
-    const start = new THREE.Vector3(midX, midY, midZ);
-    const dir = new THREE.Vector3(Math.cos(angle), 0.35 + Math.random() * 0.4, Math.sin(angle)).normalize();
-    const end = start.clone().add(dir.multiplyScalar(len));
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const fragment = new THREE.Line(geometry, material);
-    fragment.fragLife = 0;
-    scene.add(fragment);
-
-    // Animate each fragment
-    (function animateFragment(frag) {
-      function tick() {
-        frag.fragLife += 0.02;
-        frag.position.x += Math.cos(angle) * 0.04;
-        frag.position.y += 0.035 + 0.08 * Math.random();
-        frag.position.z += Math.sin(angle) * 0.04;
-        frag.material.opacity *= 0.91;
-        if (frag.material.opacity > 0.07 && frag.fragLife < 1.2) {
-          requestAnimationFrame(tick);
-        } else {
-          scene.remove(frag);
-          frag.geometry.dispose();
-          frag.material.dispose();
-        }
-      }
-      tick();
-    })(fragment);
-  }
-}
 }
 });
-  // --- Animate a room "pop-in" effect on creation ---
-  function animateRoomPopIn(roomMesh) {
-    roomMesh.scale.set(0.1, 0.1, 0.1);
-    const targetScale = { x: 1, y: 1, z: 1 };
-    let t = 0;
-    function popFrame() {
-      t += 0.08;
-      // Optional: Ease-out and bounce
-      const eased = t < 1 ? (1 - Math.pow(1 - t, 3)) : 1;
-      let overshoot = 1 + 0.12 * Math.sin(10 * t) * (1 - t); // Small bounce
-      roomMesh.scale.set(
-        THREE.MathUtils.lerp(0.1, targetScale.x * overshoot, eased),
-        THREE.MathUtils.lerp(0.1, targetScale.y * overshoot, eased),
-        THREE.MathUtils.lerp(0.1, targetScale.z * overshoot, eased)
-      );
-      if (t < 1) {
-        requestAnimationFrame(popFrame);
-      } else {
-        roomMesh.scale.set(1, 1, 1);
-      }
+
+// --- Animate a room "pop-in" effect on creation ---
+function animateRoomPopIn(roomMesh) {
+  roomMesh.scale.set(0.1, 0.1, 0.1);
+  const targetScale = { x: 1, y: 1, z: 1 };
+  let t = 0;
+  function popFrame() {
+    t += 0.08;
+    // Optional: Ease-out and bounce
+    const eased = t < 1 ? (1 - Math.pow(1 - t, 3)) : 1;
+    let overshoot = 1 + 0.12 * Math.sin(10 * t) * (1 - t); // Small bounce
+    roomMesh.scale.set(
+      THREE.MathUtils.lerp(0.1, targetScale.x * overshoot, eased),
+      THREE.MathUtils.lerp(0.1, targetScale.y * overshoot, eased),
+      THREE.MathUtils.lerp(0.1, targetScale.z * overshoot, eased)
+    );
+    if (t < 1) {
+      requestAnimationFrame(popFrame);
+    } else {
+      roomMesh.scale.set(1, 1, 1);
     }
-    popFrame();
   }
-
-  // --- Animate a breaking (shattering) line effect when a link is removed ---
-function animateBreakingLink(positionArray) {
-  // Get the two endpoints of the line
-  const [x1, y1, z1, x2, y2, z2] = positionArray;
-  // Create several fragments to "fly away"
-  for (let i = 0; i < 8; i++) {
-    const material = new THREE.LineBasicMaterial({
-      color: 0xff5555,
-      transparent: true,
-      opacity: 0.7
-    });
-    const angle = Math.random() * 2 * Math.PI;
-    const len = 0.22 + Math.random() * 0.12;
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-    const midZ = (z1 + z2) / 2;
-    // Fragment points
-    const start = new THREE.Vector3(midX, midY, midZ);
-    const dir = new THREE.Vector3(Math.cos(angle), 0.35 + Math.random() * 0.4, Math.sin(angle)).normalize();
-    const end = start.clone().add(dir.multiplyScalar(len));
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const fragment = new THREE.Line(geometry, material);
-    fragment.fragLife = 0;
-    scene.add(fragment);
-
-    // Animate each fragment
-    (function animateFragment(frag) {
-      function tick() {
-        frag.fragLife += 0.02;
-        frag.position.x += Math.cos(angle) * 0.04;
-        frag.position.y += 0.035 + 0.08 * Math.random();
-        frag.position.z += Math.sin(angle) * 0.04;
-        frag.material.opacity *= 0.91;
-        if (frag.material.opacity > 0.07 && frag.fragLife < 1.2) {
-          requestAnimationFrame(tick);
-        } else {
-          scene.remove(frag);
-          frag.geometry.dispose();
-          frag.material.dispose();
-        }
-      }
-      tick();
-    })(fragment);
-  }
+  popFrame();
 }
