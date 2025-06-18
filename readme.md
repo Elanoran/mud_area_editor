@@ -28,17 +28,37 @@ All supported formats use templates stored in `formats.json`:
 {
   "formats": {
     "ROM": {
-      "area": "...",
-      "room": "...",
-      "exit": "...",
-      "extra": "...",
-      "dirLabels": [...]
+      "fileExtension": "are",
+      "area": "#AREA\n%FILENAME%~\n%AREA_NAME%~\n{ NONE} Elan     AreaEditor~\n%VNUM_MIN% %VNUM_MAX%\n\n#MOBILES\n#0\n\n#OBJECTS\n#0\n\n#ROOMS\n%ROOMS%#0\n\n#RESETS\nS\n\n#SHOPS\n0\n\n#SPECIALS\nS\n\n#$\n",
+      "room": "#%ROOM_VNUM%\n%ROOM_NAME%~\n%ROOM_DESC%\n~\n%FLAGS% %SECTOR% %UNKNOWN%\n%EXITS%%EXTRAS%S\n",
+      "exit": "D%DIRECTION%\n%DOOR_DESC%~\n%KEYWORDS%~\n%FLAGS% %KEY% %TO_VNUM%\n",
+      "extra": "E\n%KEYWORDS%~\n%EXTRA_DESC%~\n",
+      "dirLabels": [
+        "North",
+        "East",
+        "South",
+        "West",
+        "Up",
+        "Down",
+        "Northeast",
+        "Northwest",
+        "Southeast",
+        "Southwest"
+      ]
     },
     "AW": {
-      "area": "...",
-      "room": "...",
-      "exit": "...",
-      "dirLabels": [...]
+      "fileExtension": "are",
+      "area": "#AREADATA\nName %AREA_NAME%~\nBuilders none~\nVNUMs %VNUM_MIN% %VNUM_MAX%\nCredits { NONE} Elan     AreaEditor~\nSecurity 9\nFlags 0\nEnd\n\n#MOBDATA\n#0\n\n#OBJDATA\n#0\n\n#ROOMDATA\n%ROOMS%#0\n\n#RESETS\nS\n\n#MOBPROGS\n#0\n\n#OBJPROGS\n#0\n\n#ROOMPROGS\n#0\n\n#$\n",
+      "room": "#%ROOM_VNUM%\nName   %ROOM_NAME%~\nDescr\n%ROOM_DESC%\n~\nFlags  %FLAGS% %EXTRA_FLAGS%\nSect   %SECTOR%\n%EXITS%End\n",
+      "exit": "Door %DIRECTION% %FLAGS% %KEY% %TO_VNUM%\n~\n~\n",
+      "dirLabels": ["North", "East", "South", "West", "Up", "Down"]
+    },
+    "JSON": {
+      "fileExtension": "json",
+      "area": "",
+      "room": "",
+      "exit": "",
+      "dirLabels": []
     }
   }
 }
