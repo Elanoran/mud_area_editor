@@ -1,3 +1,12 @@
+// --- Normalize direction vector utility ---
+function normalizeDirectionVector(dx, dy, dz) {
+  // For cardinal and diagonal: reduce to ±1, 0 for nonzero
+  return [
+    dx === 0 ? 0 : dx / Math.abs(dx),
+    dy === 0 ? 0 : dy / Math.abs(dy),
+    dz === 0 ? 0 : dz / Math.abs(dz)
+  ];
+}
 // --- Unified direction definitions ---
 const DIRECTIONS = [
   { key: 'n',  name: 'North',     vector: '0,0,-1', index: 0 },
@@ -25,6 +34,9 @@ DIRECTIONS.forEach(d => {
   dirIndexToVector[d.index]  = d.vector;
 });
 
+// Level offset constant (so level 0 is index 20)
+const LEVEL_OFFSET = 20;
+
 function getDirectionName(dir) {
   if (dirVectorToIndex[dir] !== undefined) return dirIndexToName[dirVectorToIndex[dir]];
   if (dirKeyToIndex[dir]    !== undefined) return dirKeyToName[dir];
@@ -33,30 +45,13 @@ function getDirectionName(dir) {
   return dir;
 }
 
-// --- Global utility to update room info in UI ---
-if (typeof window.updateRoomInfo !== "function") {
-  window.updateRoomInfo = function updateRoomInfo(room) {
-    if (!room || !room.id) return;
-    const coordField = document.getElementById('roomVnumCoords');
-    if (coordField) {
-      coordField.value = `(${room.x.toFixed(1)}, ${room.z.toFixed(1)}, ${room.level})`;
-    }
-
-    const exitsList = document.getElementById('roomExitsList');
-    if (exitsList) {
-      exitsList.innerHTML = '';
-
-      if (room.exits) {
-        for (const [dirKey, targetId] of Object.entries(room.exits)) {
-          const li = document.createElement('li');
-          const label = getDirectionName(dirKey);
-          li.textContent = `${label} → Room ${targetId}`;
-          exitsList.appendChild(li);
-        }
-      }
-    }
-  }
+function getDirectionVectorKey(from, to) {
+  const dx = Math.round((to.x !== undefined ? to.x : to.position.x) - (from.x !== undefined ? from.x : from.position.x));
+  const dy = Math.round(((to.level !== undefined ? to.level : (to.userData?.level ?? 0)) - (from.level !== undefined ? from.level : (from.userData?.level ?? 0))));
+  const dz = Math.round((to.z !== undefined ? to.z : to.position.z) - (from.z !== undefined ? from.z : from.position.z));
+  return [dx, dy, dz].join(',');
 }
+
 import * as THREE from 'https://esm.sh/three@0.157.0';
 import { OrbitControls } from 'https://esm.sh/three@0.157.0/examples/jsm/controls/OrbitControls.js';
 
@@ -215,7 +210,6 @@ window.addEventListener('load', () => {
   scene.background = new THREE.Color(0x222233);
 
   const MAX_LEVELS = 41;
-  const LEVEL_OFFSET = 20; // so level 0 is index 20
   let currentLevel = 0;
   const levelContainers = Array.from({ length: MAX_LEVELS }, () => new THREE.Group());
   levelContainers.forEach(g => scene.add(g));
@@ -337,7 +331,6 @@ window.addEventListener('load', () => {
   let gridLocked = true;
   const lockBtn = document.getElementById('fitViewBtn');
   // Initialize button icon and tooltip
-  // Initialize button icon and tooltip
   lockBtn.innerHTML = gridLocked
     ? '<i class="fa-solid fa-lock"></i>'
     : '<i class="fa-solid fa-lock-open"></i>';
@@ -364,7 +357,7 @@ window.addEventListener('load', () => {
       alert('No room selected to delete.');
       return;
     }
-    if (!confirm('Are you sure you want to delete this room?')) return;
+    //if (!confirm('Are you sure you want to delete this room?')) return;
     const room = selectedRoom;
     const levelIndex = room.userData.level + LEVEL_OFFSET;
     // Remove exit lines
@@ -781,6 +774,17 @@ window.addEventListener('load', () => {
     selectedRoomColor = firstColorButton.dataset.color;
   }
 
+  // Save sidebar field edits to selectedRoom.userData
+  document.getElementById('roomVnum')?.addEventListener('input', e => {
+    if (selectedRoom) selectedRoom.userData.id = parseInt(e.target.value, 10);
+  });
+  document.getElementById('roomName')?.addEventListener('input', e => {
+    if (selectedRoom) selectedRoom.userData.name = e.target.value;
+  });
+  document.getElementById('roomDesc')?.addEventListener('input', e => {
+    if (selectedRoom) selectedRoom.userData.desc = e.target.value;
+  });
+
   let minVnum = 100;
   let maxVnum = 199;
   const usedVnums = new Set();
@@ -845,12 +849,12 @@ window.addEventListener('load', () => {
     line.userData = { fromRoom, toRoom };
     levelContainers[LEVEL_OFFSET].add(line);
     if (animate)
-      animateStreak(from, to);
+      animateStreak(from, to, LEVEL_OFFSET);
     return line;
   }
 
   // --- Animate a light streak between two points (exit link effect) ---
-  function animateStreak(from, to) {
+  function animateStreak(from, to, levelIndex) {
     const streakMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff33,
       transparent: true,
@@ -860,7 +864,7 @@ window.addEventListener('load', () => {
     const streakGeom = new THREE.SphereGeometry(0.13, 10, 10);
     const streak = new THREE.Mesh(streakGeom, streakMaterial);
     streak.position.copy(from);
-    scene.add(streak);
+    levelContainers[levelIndex].add(streak);
 
     let t = 0;
     const duration = 0.4; // seconds
@@ -874,12 +878,92 @@ window.addEventListener('load', () => {
       if (t < 1) {
         requestAnimationFrame(animate);
       } else {
-        scene.remove(streak);
+        levelContainers[levelIndex].remove(streak);
         streak.geometry.dispose();
         streak.material.dispose();
       }
     }
     animate();
+  }
+
+  // --- Global utility to update room info in UI ---
+  if (typeof window.updateRoomInfo !== "function") {
+    window.updateRoomInfo = function updateRoomInfo(room) {
+      if (!room || !room.id) return;
+      const coordField = document.getElementById('roomVnumCoords');
+      if (coordField) {
+        coordField.value = `(${room.x.toFixed(1)}, ${room.z.toFixed(1)}, ${room.level})`;
+      }
+
+      const exitsList = document.getElementById('roomExitsList');
+      if (exitsList) {
+        exitsList.innerHTML = '';
+
+        // Read only from userData.exits now
+        const exitsData = room.userData.exits || {};
+        for (const [vecKey, { room: target }] of Object.entries(exitsData)) {
+          const li = document.createElement('li');
+          li.textContent = `${getDirectionName(vecKey)} to Room ${target.userData.id}`;
+          // --- Pulsing streak effect on hover for exit line ---
+          let pulseInterval = null;
+          let lastStreakTimeout = null;
+          li.addEventListener('mouseenter', () => {
+            if (pulseInterval !== null) return; // Already running
+            if (room.userData.exitLinks && target) {
+              // Find the line that connects this room to the target
+              const line = room.userData.exitLinks.find(l =>
+                (l.userData.fromRoom === room && l.userData.toRoom === target) ||
+                (l.userData.fromRoom === target && l.userData.toRoom === room)
+              );
+              if (line && line.geometry && line.geometry.attributes && line.geometry.attributes.position) {
+                const pos = line.geometry.attributes.position.array;
+                let from, to;
+                // Animate in the direction: from this room toward the exit
+                if (line.userData.fromRoom === room) {
+                  from = new THREE.Vector3(pos[0], pos[1], pos[2]);
+                  to   = new THREE.Vector3(pos[3], pos[4], pos[5]);
+                } else {
+                  from = new THREE.Vector3(pos[3], pos[4], pos[5]);
+                  to   = new THREE.Vector3(pos[0], pos[1], pos[2]);
+                }
+                // Find the actual level container this line is in
+                let levelIdx = LEVEL_OFFSET;
+                for (let i = 0; i < levelContainers.length; i++) {
+                  if (levelContainers[i].children.includes(line)) {
+                    levelIdx = i;
+                    break;
+                  }
+                }
+                animateStreak(from, to, levelIdx);
+                pulseInterval = setInterval(() => {
+                  animateStreak(from, to, levelIdx);
+                }, 350);
+              }
+            }
+          });
+          li.addEventListener('mouseleave', () => {
+            if (pulseInterval !== null) {
+              clearInterval(pulseInterval);
+              pulseInterval = null;
+            }
+          });
+          exitsList.appendChild(li);
+        }
+      }
+      // Update room fields: VNUM, Name, Description
+      const vnumField = document.getElementById('roomVnum');
+      const nameField = document.getElementById('roomName');
+      const descField = document.getElementById('roomDesc');
+      if (vnumField) vnumField.value = room?.userData?.id ?? '';
+      if (nameField) nameField.value = room?.userData?.name ?? '';
+      if (descField) descField.value = room?.userData?.desc ?? '';
+      // Update active tab height (for dynamic sidebar resizing)
+      const areaInfoContainer = document.getElementById('areaInfoContainer');
+      const activeTab = areaInfoContainer?.querySelector('.tab-content.active');
+      if (activeTab) {
+        areaInfoContainer.style.height = activeTab.scrollHeight + 'px';
+      }
+    }
   }
 
   // For move-drag: track original position for history
@@ -928,47 +1012,8 @@ window.addEventListener('load', () => {
             }
             selectedRoom = room;
             selectedFace = { object: room, point: getRoomCenter(room) };
-            // Populate the VNUM and other fields when a room is selected
-            if (selectedRoom) {
-              const vnumField = document.getElementById('roomVnum');
-              const vnumCoordsSpan = document.getElementById('roomVnumCoords');
-              const nameField = document.getElementById('roomName');
-              const descField = document.getElementById('roomDesc');
-              if (vnumField) vnumField.value = selectedRoom.userData.id ?? '';
-              if (nameField) nameField.value = selectedRoom.userData.name ?? '';
-              if (descField) descField.value = selectedRoom.userData.desc ?? '';
-              if (vnumCoordsSpan) {
-                const x = selectedRoom.position?.x ?? '?';
-                const z = selectedRoom.position?.z ?? '?';
-                const level = selectedRoom.userData?.level ?? '?';
-                vnumCoordsSpan.textContent = `(${x}, ${z}, ${level})`;
-              }
-
-              // --- Update exits list UI (human-readable direction names) ---
-              const exitsList = document.getElementById("roomExitsList");
-              if (exitsList) {
-                exitsList.innerHTML = "";
-                let room = selectedRoom;
-                let exits = room.exits || (room.userData && room.userData.exits);
-                if (exits) {
-                  for (const [dir, targetId] of Object.entries(exits)) {
-                    let displayTarget = targetId;
-                    // If value is an object, try to extract id
-                    if (typeof targetId === "object" && targetId !== null) {
-                      if (typeof targetId === "object" && "room" in targetId && targetId.room && typeof targetId.room.userData?.id !== "undefined") {
-                        displayTarget = targetId.room.userData.id;
-                      } else if ("id" in targetId) {
-                        displayTarget = targetId.id;
-                      }
-                    }
-                    const direction = getDirectionName(dir);
-                    const li = document.createElement("li");
-                    li.textContent = `${direction} to ${displayTarget}`;
-                    exitsList.appendChild(li);
-                  }
-                }
-              }
-            }
+            // Update the exits list in the sidebar
+            if (typeof updateRoomInfo === 'function') updateRoomInfo(selectedRoom);
             // Create new outline mesh
             const outlineMaterial = new THREE.MeshBasicMaterial({
               color: 0xffffff,
@@ -980,7 +1025,11 @@ window.addEventListener('load', () => {
             levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].add(outlineMesh);
             // Store reference to cleanup later
             selectedRoom.outlineMesh = outlineMesh;
+            if (gridLocked) return; // Prevent moving room when locked
             isDragging = true;
+            // Lock camera controls during room drag
+            controls.enableRotate = false;
+            controls.enablePan = false;
             // Store original position for history
             dragStartPos = {
               x: selectedRoom.position.x,
@@ -1007,22 +1056,21 @@ window.addEventListener('load', () => {
           const normalized = directionVec.clone().normalize();
           const step = new THREE.Vector3(Math.round(normalized.x), Math.round(normalized.y), Math.round(normalized.z));
 
-          // Allow linking in all 10 directions (including diagonals)
-          const allowedSteps = [
-            [0, 0, -1], // n
-            [1, 0, 0],  // e
-            [0, 0, 1],  // s
-            [-1, 0, 0], // w
-            [0, 1, 0],  // u
-            [0, -1, 0], // d
-            [1, 0, -1], // ne
-            [-1, 0, -1], // nw
-            [1, 0, 1], // se
-            [-1, 0, 1] // sw
-          ];
-          const valid = allowedSteps.some(([x, y, z]) =>
-            step.x === x && step.y === y && step.z === z
-          );
+          // Accept any straight or diagonal (or up/down) line regardless of distance
+          let valid = false;
+          if (step.y === 0) {
+            // Horizontal or diagonal
+            if (
+              (step.x !== 0 && step.z === 0) || // pure east/west
+              (step.x === 0 && step.z !== 0) || // pure north/south
+              (Math.abs(step.x) === Math.abs(step.z) && step.x !== 0) // pure diagonal
+            ) {
+              valid = true;
+            }
+          } else if (step.x === 0 && step.z === 0 && step.y !== 0) {
+            // up/down
+            valid = true;
+          }
           if (!valid) {
             if (selectedRoom?.outlineMesh) {
               levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
@@ -1044,46 +1092,45 @@ window.addEventListener('load', () => {
           else if (step.y === 1 && step.x === 0 && step.z === 0) direction = 4; // Up (positive y)
           else if (step.y === -1 && step.x === 0 && step.z === 0) direction = 5; // Down (negative y)
 
-          // Check if link exists both ways
-          const fromKey = step.toArray().toString();
-          const toKey = step.clone().negate().toArray().toString();
-          if (from.userData.exits[fromKey] && to.userData.exits[toKey]) {
-            // Remove all existing lines between these two rooms (handle multiple/ghost lines)
-            const exitLines = from.userData.exitLinks.filter(line =>
-              (line.userData.fromRoom === from && line.userData.toRoom === to) ||
-              (line.userData.fromRoom === to && line.userData.toRoom === from)
-            );
-            exitLines.forEach(exitLine => {
-              levelContainers.forEach(container => container.remove(exitLine));
-              if (exitLine.geometry && exitLine.geometry.attributes && exitLine.geometry.attributes.position) {
-                animateBreakingLink(exitLine.geometry.attributes.position.array);
+          // Use getDirectionVectorKey for exit keys
+          const fromKey = getDirectionVectorKey(from, to);
+          const toKey = getDirectionVectorKey(to, from);
+
+          // Determine existing visual links between these rooms
+          const exitLines = from.userData.exitLinks.filter(line =>
+            (line.userData.fromRoom === from && line.userData.toRoom === to) ||
+            (line.userData.fromRoom === to   && line.userData.toRoom === from)
+          );
+          if (exitLines.length > 0) {
+            // Remove each line
+            exitLines.forEach(line => {
+              levelContainers.forEach(container => container.remove(line));
+              if (line.geometry?.attributes?.position) {
+                animateBreakingLink(line.geometry.attributes.position.array);
               }
             });
-            // Remove all these lines from both rooms' exitLinks
-            from.userData.exitLinks = from.userData.exitLinks.filter(line =>
-              !((line.userData.fromRoom === from && line.userData.toRoom === to) ||
-                (line.userData.fromRoom === to && line.userData.toRoom === from))
-            );
-            to.userData.exitLinks = to.userData.exitLinks.filter(line =>
-              !((line.userData.fromRoom === from && line.userData.toRoom === to) ||
-                (line.userData.fromRoom === to && line.userData.toRoom === from))
-            );
+            // Remove from both rooms' exitLinks
+            from.userData.exitLinks = from.userData.exitLinks.filter(line => !exitLines.includes(line));
+            to.userData.exitLinks   = to.userData.exitLinks.filter(line => !exitLines.includes(line));
+            // Remove persistent exits using vector keys
             delete from.userData.exits[fromKey];
             delete to.userData.exits[toKey];
-            selectedFace = null;
-            // --- Clear highlight and selectedRoom after link/unlink ---
-            // Ensure both the selectedRoom reference and its highlight are cleared
-            if (selectedRoom && selectedRoom.outlineMesh) {
+            // Refresh exits and UI
+            recalculateExits();
+            if (typeof drawLinks === 'function') drawLinks();
+            if (typeof updateRoomInfo === 'function') updateRoomInfo(from);
+            // Clear selection and outline
+            if (selectedRoom?.outlineMesh) {
               levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
               selectedRoom.outlineMesh.geometry.dispose();
               selectedRoom.outlineMesh.material.dispose();
               delete selectedRoom.outlineMesh;
             }
-            if (selectedRoom && selectedRoom.material && selectedRoom.material.emissive) {
+            if (selectedRoom?.material?.emissive) {
               selectedRoom.material.emissive.setHex(0x000000);
             }
             selectedRoom = null;
-            // --- Push history after removing a link ---
+            selectedFace = null;
             pushHistory();
             return;
           }
@@ -1125,27 +1172,12 @@ window.addEventListener('load', () => {
               case 5: reverseDirection = 4; break; // Down → Up
             }
             to.userData.exits[toKey] = { room: from, direction: reverseDirection };
+            // Refresh exits data and UI after adding a link
+            recalculateExits();
+            if (typeof drawLinks === 'function') drawLinks();
+            if (typeof updateRoomInfo === 'function') updateRoomInfo(from);
             // Draw links (if any additional logic is needed, e.g., updating visuals)
             // (If drawLinks() is a function, it would be called here. If not, ignore this comment.)
-
-            // --- Add separate logic to store exits directionally for export consistency ---
-            // Only after visual link, maintain exits on both rooms as offset->id
-            // (This does not interfere with userData.exits used for visuals)
-            // --- Safely calculate and assign exits only if coordinates are valid ---
-            const dx = room.x - selectedRoom.x;
-            const dy = (room.level || 0) - (selectedRoom.level || 0);
-            const dz = room.z - selectedRoom.z;
-
-            if (!isNaN(dx) && !isNaN(dy) && !isNaN(dz)) {
-              const offsetKey = `${dx},${dy},${dz}`;
-              const reverseOffsetKey = `${-dx},${-dy},${-dz}`;
-
-              if (!selectedRoom.exits) selectedRoom.exits = {};
-              if (!room.exits) room.exits = {};
-
-              selectedRoom.exits[offsetKey] = room.id;
-              room.exits[reverseOffsetKey] = selectedRoom.id;
-            }
             // --- Push history after creating a link ---
             pushHistory();
           }
@@ -1180,7 +1212,20 @@ window.addEventListener('load', () => {
       });
       const particle = new THREE.Mesh(particleGeom, particleMat);
       particle.position.set(x, y, z);
-      scene.add(particle);
+
+      // Find the most appropriate level for the animation (use the fromRoom's level if possible)
+      let levelIdx = LEVEL_OFFSET; // default
+      if (Array.isArray(positionArray) && positionArray.length >= 6) {
+        // Try to find a room at this position
+        // We'll use y1 as the level indicator, assuming rooms are offset by (level * 2) in y
+        // So estimate the level:
+        let approxLevel = Math.round(y1 / 2);
+        let possibleIdx = approxLevel + LEVEL_OFFSET;
+        if (levelContainers[possibleIdx]) {
+          levelIdx = possibleIdx;
+        }
+      }
+      levelContainers[levelIdx].add(particle);
 
       // Animate each particle to "break away"
       const velocity = new THREE.Vector3(
@@ -1197,7 +1242,7 @@ window.addEventListener('load', () => {
         if (age < lifetime && particle.material.opacity > 0.04) {
           requestAnimationFrame(animateParticle);
         } else {
-          scene.remove(particle);
+          levelContainers[levelIdx].remove(particle);
           particle.geometry.dispose();
           particle.material.dispose();
         }
@@ -1299,51 +1344,66 @@ window.addEventListener('load', () => {
   }
 
   // --- Recalculate all exits based on room positions, but only for rooms with visual links ---
-  function recalculateExits() {
-    // Build flat map of all rooms by id and positions
-    const allRooms = [];
-    for (let level of rooms) {
-      for (let r of level) {
-        // Ensure .x, .z, .level are present
-        r.x = r.position.x;
-        r.z = r.position.z;
-        r.level = r.userData.level || 0;
-        allRooms.push(r);
+  if (typeof window.recalculateExits !== "function") {
+    window.recalculateExits = function recalculateExits() {
+      // Build flat map of all rooms by id and positions
+      const allRooms = [];
+      for (let level of rooms) {
+        for (let r of level) {
+          // Ensure .x, .z, .level are present
+          r.x = r.position.x;
+          r.z = r.position.z;
+          r.level = r.userData.level || 0;
+          allRooms.push(r);
+        }
       }
-    }
-    // Clear all .exits objects in place
-    for (const room of allRooms) {
-      room.exits = {};
-    }
+      // Clear both temporary and persistent exits mappings
+      for (const r of allRooms) {
+        r.userData.exits = {};
+      }
 
-    for (const roomA of allRooms) {
-      for (const roomB of allRooms) {
-        if (roomA === roomB) continue;
+      for (const roomA of allRooms) {
+        for (const roomB of allRooms) {
+          if (roomA === roomB) continue;
 
-        // Only assign exits if there is a visual link (exitLine) between roomA and roomB
-        const hasLink = roomA.userData.exitLinks?.some(line =>
-          (line.userData.fromRoom === roomA && line.userData.toRoom === roomB) ||
-          (line.userData.fromRoom === roomB && line.userData.toRoom === roomA)
-        );
-        if (!hasLink) continue;
+          // Only assign exits if there is a visual link (exitLine) between roomA and roomB
+          const hasLink = roomA.userData.exitLinks?.some(line =>
+            (line.userData.fromRoom === roomA && line.userData.toRoom === roomB) ||
+            (line.userData.fromRoom === roomB && line.userData.toRoom === roomA)
+          );
+          if (!hasLink) continue;
 
-        const dir = getDirectionBetween(roomA, roomB);
-        if (dir && !(dir in roomA.exits)) {
-          // Use userData?.id if possible, fallback to .id
-          roomA.exits[dir] = parseInt(roomB.userData?.id ?? roomB.id, 10);
+          // Use normalized direction vector as key and only store if it's a valid direction vector
+          const dx = Math.round(roomB.x - roomA.x);
+          const dy = Math.round((roomB.level || 0) - (roomA.level || 0));
+          const dz = Math.round(roomB.z - roomA.z);
+          let normalizedKey;
+          if (dy !== 0) {
+            // Any up/down is just up or down, ignore x/z difference
+            normalizedKey = [0, dy > 0 ? 1 : -1, 0].join(',');
+          } else {
+            // Only use X/Z if on same level
+            const [nx, , nz] = normalizeDirectionVector(dx, dy, dz);
+            normalizedKey = [nx, 0, nz].join(',');
+          }
+          if (DIRECTIONS.some(d => d.vector === normalizedKey)) {
+            roomA.userData.exits[normalizedKey] = { room: roomB };
+          }
         }
       }
     }
   }
 
 
-  // --- Room hover label logic ---
-    // Remove any previous pointermove hover label logic and deduplicate
   // --- Room hover label logic (deduplicated, robust) ---
   renderer.domElement.addEventListener('pointermove', function (event) {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
+    // Lock camera controls if dragging
+    const dragging = isDragging && !!selectedRoom;
+    controls.enableRotate = !dragging;
+    controls.enablePan   = !dragging;
 
     // Only show label for rooms on currentLevel, currentLevel+1, currentLevel-1
     const levelRange = [currentLevel + LEVEL_OFFSET, currentLevel + 1 + LEVEL_OFFSET, currentLevel - 1 + LEVEL_OFFSET];
@@ -1381,6 +1441,17 @@ window.addEventListener('load', () => {
       }
       hoverRoom = null;
     }
+    // If we're in drag mode, move the room via shared utility
+    if (isDragging && selectedRoom) {
+      // Cast to plane
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const point = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(plane, point)) {
+        const newX = Math.floor(point.x) + 0.5;
+        const newZ = Math.floor(point.z) + 0.5;
+        updateRoomPosition(selectedRoom, newX, newZ);
+      }
+    }
   });
 
   // Remove label when mouse leaves the canvas
@@ -1393,94 +1464,53 @@ window.addEventListener('load', () => {
       hoverLabel = null;
     }
     hoverRoom = null;
-
-    // Only disable OrbitControls rotation while dragging and a node is selected
-    controls.enableRotate = !(isDragging && selectedRoom);
-    if (!isDragging || !selectedRoom) return;
-    if (gridLocked) return;
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const point = new THREE.Vector3();
-    if (raycaster.ray.intersectPlane(plane, point)) {
-      const newX = Math.floor(point.x) + 0.5;
-      const newZ = Math.floor(point.z) + 0.5;
-      selectedRoom.position.x = newX;
-      selectedRoom.position.z = newZ;
-      // --- Sync numeric properties for recalculateExits() ---
-      selectedRoom.x = selectedRoom.position.x;
-      selectedRoom.z = selectedRoom.position.z;
-      selectedRoom.level = selectedRoom.userData.level || 0;
-      // Sync outline mesh position if present
-      if (selectedRoom.outlineMesh) {
-        selectedRoom.outlineMesh.position.copy(selectedRoom.position);
-      }
-
-      // --- Update coords display if the moved room is the selected one ---
-      if (selectedRoom) {
-        const vnumCoordsSpan = document.getElementById('roomVnumCoords');
-        if (vnumCoordsSpan) {
-          const x = selectedRoom.position.x.toFixed(1);
-          const z = selectedRoom.position.z.toFixed(1);
-          const level = selectedRoom.userData?.level ?? '?';
-          vnumCoordsSpan.textContent = `(${x}, ${z}, ${level})`;
-        }
-      }
-
-      // Update any exit lines connected to this room
-      if (selectedRoom.userData?.exitLinks) {
-        selectedRoom.userData.exitLinks.forEach(line => {
-          const pos = line.geometry.attributes.position.array;
-          const from = line.userData.fromRoom;
-          const to = line.userData.toRoom;
-          const fromPos = getRoomCenter(from);
-          const toPos = getRoomCenter(to);
-          pos[0] = fromPos.x;
-          pos[1] = fromPos.y;
-          pos[2] = fromPos.z;
-          pos[3] = toPos.x;
-          pos[4] = toPos.y;
-          pos[5] = toPos.z;
-          line.geometry.attributes.position.needsUpdate = true;
-        });
-      }
-      // --- Recalculate all exits based on room positions ---
-      if (!gridLocked)
-      {
-        recalculateExits();
-        if (selectedRoom) updateRoomInfo(selectedRoom);
-        // Draw links after recalculation and UI update
-        if (typeof drawLinks === 'function') {
-          drawLinks();
-        }
-      }
-    }
   });
 
   // --- Update a room's position and recalculate exits after the update ---
-  // Usage: updateRoomPosition(room, x, z, y = 0)
-  function updateRoomPosition(room, x, z, y = 0) {
+  // Usage: updateRoomPosition(room, x, z, y)
+  function updateRoomPosition(room, x, z, y) {
+    // Preserve existing Y if no Y value specified during drag
+    const newY = (typeof y !== 'undefined') ? y : room.position.y;
     // Update the room's internal position object first
     room.position.x = x;
     room.position.z = z;
-    room.position.y = y;
+    room.position.y = newY;
 
     // Update the mesh position
     room.mesh?.position?.set
-      ? room.mesh.position.set(x, y, z)
-      : room.position.set(x, y, z);
+      ? room.mesh.position.set(x, newY, z)
+      : room.position.set(x, newY, z);
 
     // Update label position if present
     if (room.label) {
-      room.label.position.set(x, y + 0.4, z);
+      room.label.position.set(x, newY + 0.4, z);
+    }
+
+    // Update outline mesh position if present
+    if (room.outlineMesh) {
+      room.outlineMesh.position.set(x, newY, z);
+    }
+    // Move connected exit lines with the room
+    if (room.userData.exitLinks) {
+      room.userData.exitLinks.forEach(line => {
+        const pos = line.geometry.attributes.position.array;
+        const fromPos = getRoomCenter(line.userData.fromRoom);
+        const toPos = getRoomCenter(line.userData.toRoom);
+        pos[0] = fromPos.x;
+        pos[1] = fromPos.y;
+        pos[2] = fromPos.z;
+        pos[3] = toPos.x;
+        pos[4] = toPos.y;
+        pos[5] = toPos.z;
+        line.geometry.attributes.position.needsUpdate = true;
+      });
     }
 
     // Update internal data values (if present)
     if (typeof roomData !== "undefined" && roomData[room.id]) {
       roomData[room.id].x = x;
       roomData[room.id].z = z;
-      roomData[room.id].level = y;
+      roomData[room.id].level = newY;
     }
 
     // Now recalculate exits after updating position values
@@ -1493,6 +1523,8 @@ window.addEventListener('load', () => {
     isDragging = false;
     // Re-enable OrbitControls rotation after dragging
     controls.enableRotate = true;
+    // Re-enable OrbitControls panning after drag
+    controls.enablePan = true;
     recalculateExits();
     if (typeof drawLinks === 'function') {
       drawLinks();
@@ -1743,9 +1775,8 @@ window.addEventListener('load', () => {
               if (data.room && data.room.userData && typeof data.room.userData.id !== 'undefined') {
                 const readableDir = getDirectionName(dir);
                 // Add backward compatible structure: { to: id, link: dir }
-                exits[readableDir] = {
-                  to: data.room.userData.id,
-                  link: dir
+                exits[dir] = {
+                  to: data.room.userData.id
                 };
               }
             }
@@ -1763,13 +1794,22 @@ window.addEventListener('load', () => {
           });
         });
       });
+      // --- Compose areaInfo object ---
+      const areaInfo = {
+        areaName: document.getElementById('areaName')?.value || '',
+        filename: document.getElementById('filename')?.value || '',
+        vnumMin: minVnum,
+        vnumMax: maxVnum
+      };
       const filename = document.getElementById('filename')?.value.trim();
       const ext = getFormatExtension(exportFormat);
       let finalFilename = filename;
       if (!finalFilename.toLowerCase().endsWith('.' + ext)) {
         finalFilename += '.' + ext;
       }
-      const blob = new Blob([JSON.stringify(roomsData, null, 2)], { type: 'application/json' });
+      // --- Save both areaInfo and roomsData in an object ---
+      const exportObj = { areaInfo, rooms: roomsData };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1932,15 +1972,15 @@ window.addEventListener('load', () => {
         roomsStr += fillTemplate(roomTemplate, roomData);
       } else {
         roomsStr += `#${vnum}
-Name   ${name}~
-Descr
-${desc}
-~
-Flags  ${flags} ${extraFlags}
-Sect   ${sector}
-${exitsStr}${extrasStr}End
+        Name   ${name}~
+        Descr
+        ${desc}
+        ~
+        Flags  ${flags} ${extraFlags}
+        Sect   ${sector}
+        ${exitsStr}${extrasStr}End
 
-`;
+        `;
       }
     });
 
@@ -2060,7 +2100,19 @@ ${exitsStr}${extrasStr}End
       .filter(obj => obj.type === 'Line')
       .forEach(line => levelContainers[LEVEL_OFFSET].remove(line));
 
-    const data = JSON.parse(json);
+    let data = JSON.parse(json);
+    // If areaInfo exists, update area info UI fields and vnum range
+    if (data.areaInfo) {
+      document.getElementById('areaName').value = data.areaInfo.areaName || '';
+      document.getElementById('filename').value = data.areaInfo.filename || '';
+      if (document.getElementById('vnumMin')) document.getElementById('vnumMin').value = data.areaInfo.vnumMin || 100;
+      if (document.getElementById('vnumMax')) document.getElementById('vnumMax').value = data.areaInfo.vnumMax || 199;
+      minVnum = parseInt(data.areaInfo.vnumMin) || 100;
+      maxVnum = parseInt(data.areaInfo.vnumMax) || 199;
+    }
+    // Support both new and old format: if .rooms exists, use that; else assume array
+    if (data.rooms) data = data.rooms;
+
     const idToRoom = new Map();
 
     // First pass: recreate all rooms
@@ -2071,43 +2123,64 @@ ${exitsStr}${extrasStr}End
         new THREE.BoxGeometry(1, 1, 1),
         new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
       );
-      // Set shadows for imported rooms
       box.castShadow = true;
       box.receiveShadow = true;
       box.position.set(entry.x, 0.5, entry.z);
       box.userData = {
         id: entry.id,
-        exits: {},
+        exits: {},        // <-- must be empty
+        exitLinks: [],    // <-- must be empty
         color,
-        level: entry.level
+        level: entry.level,
+        name: entry.name || '',
+        desc: entry.desc || ''
       };
       levelContainers[levelIndex].add(box);
       rooms[levelIndex].push(box);
       idToRoom.set(entry.id, box);
     });
 
-    // Second pass: link exits based on JSON export shape
+    // Second pass: link exits, always new lines, no duplicates, and check existence
     data.forEach(entry => {
       const fromRoom = idToRoom.get(entry.id);
       if (!fromRoom) return;
-      for (const { to, link } of Object.values(entry.exits || {})) {
-        const toRoom = idToRoom.get(to);
+      fromRoom.userData.exitLinks = [];
+      fromRoom.userData.exits = {};
+    });
+
+    data.forEach(entry => {
+      const fromRoom = idToRoom.get(entry.id);
+      if (!fromRoom) return;
+      for (const [vecKey, exit] of Object.entries(entry.exits || {})) {
+        const toRoom = idToRoom.get(exit.to);
         if (!toRoom) continue;
-        const fromPos = getRoomCenter(fromRoom);
-        const toPos = getRoomCenter(toRoom);
-        const line = createExitLine(fromPos, toPos, fromRoom, toRoom);
-        line.userData.direction = link;
-        fromRoom.userData.exitLinks = fromRoom.userData.exitLinks || [];
-        fromRoom.userData.exitLinks.push(line);
-        toRoom.userData.exitLinks = toRoom.userData.exitLinks || [];
-        toRoom.userData.exitLinks.push(line);
-        // store exits in both directions
-        fromRoom.userData.exits[link] = { room: toRoom, direction: link };
-        const rev = link.split(',').map(n => -parseInt(n)).join(',');
-        toRoom.userData.exits[rev] = { room: fromRoom, direction: rev };
+        // Only wire up if this exit not already present
+        if (!fromRoom.userData.exits[vecKey]) {
+          const fromPos = getRoomCenter(fromRoom);
+          const toPos = getRoomCenter(toRoom);
+          const line = createExitLine(fromPos, toPos, fromRoom, toRoom, false); // no animation on import
+          fromRoom.userData.exitLinks.push(line);
+          toRoom.userData.exitLinks.push(line);
+          fromRoom.userData.exits[vecKey] = { room: toRoom, direction: vecKey };
+          // Compute reverse vector key for the return direction
+          const rev = vecKey.split(',').map(n => -parseInt(n, 10)).join(',');
+          if (!toRoom.userData.exits[rev]) {
+            toRoom.userData.exits[rev] = { room: fromRoom, direction: rev };
+          }
+        }
       }
     });
 
+    // --- Update usedVnums and lastAssignedVnum after import ---
+    usedVnums.clear();
+    let highestVnum = minVnum - 1;
+    rooms.forEach(level =>
+      level.forEach(room => {
+        usedVnums.add(room.userData.id);
+        if (room.userData.id > highestVnum) highestVnum = room.userData.id;
+      })
+    );
+    lastAssignedVnum = highestVnum;
     // Refresh visuals and UI
     recalculateExits();
     if (typeof drawLinks === 'function') drawLinks();
@@ -2173,7 +2246,7 @@ ${exitsStr}${extrasStr}End
     const options = [
   // Most common square grids
   { label: '10 x 10',   width: 10, height: 10 },
-  { label: '15 x 15',   width: 15, height: 15 },
+  { label: '16 x 16',   width: 16, height: 16 },
   { label: '20 x 20',   width: 20, height: 20 },
   { label: '30 x 30',   width: 30, height: 30 },
   { label: '40 x 40',   width: 40, height: 40 },
@@ -2182,12 +2255,12 @@ ${exitsStr}${extrasStr}End
   // Rectangle and specialty grids
   { label: '10 x 30',   width: 10, height: 30 },
   { label: '30 x 10',   width: 30, height: 10 },
-  { label: '5 x 40',    width: 5,  height: 40 },
-  { label: '40 x 5',    width: 40, height: 5  },
-  { label: '12 x 35',   width: 12, height: 35 },
-  { label: '35 x 12',   width: 35, height: 12 },
-  { label: '15 x 25',   width: 15, height: 25 },
-  { label: '25 x 15',   width: 25, height: 15 },
+  { label: '6 x 40',    width: 6,  height: 40 },
+  { label: '40 x 6',    width: 40, height: 6  },
+  { label: '12 x 36',   width: 12, height: 36 },
+  { label: '36 x 12',   width: 36, height: 12 },
+  { label: '16 x 26',   width: 16, height: 26 },
+  { label: '26 x 16',   width: 26, height: 16 },
 ];
     gridSelect.innerHTML = '';
     options.forEach((opt, i) => {
