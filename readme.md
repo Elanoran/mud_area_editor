@@ -88,15 +88,31 @@ You can add new formats to `formats.json` without modifying the core code, makin
 
 ## Branch Model
 
-- **main**: Production-ready code; always "safe" to deploy.
-- **dev**: Integration/staging branch for the next release.  
-  - Branch off `dev` for each new feature:  
+- **`dev`**  
+  Integration/staging branch for the next release.  
+  - Branch off for new work:  
     ```bash
-    git checkout -b feature/your-feature dev
+    git checkout -b feature/… dev
+    ```  
+  - Merge feature branches back into `dev` once they pass QA.
+
+- **`main`**  
+  Production-ready code; always safe to deploy.  
+  - When `dev` is stable, open PR `dev` → `main`, merge, then tag:
+
+    ```bash
+    git checkout main
+    git pull
+    git merge dev
+    git tag vX.Y.Z
+    git push --tags
     ```
-  - Merge feature branches back into `dev` once they’ve been tested.
-- **feature/***: Short-lived feature branches off `dev`.
-- **hotfix/***: Urgent-fix branches off `main`; merge back into both `main` and `dev`.
+
+- **`feature/*`**  
+  Short-lived branches off `dev` for isolated work.
+
+- **`hotfix/*`**  
+  Urgent-fix branches off `main` for production bugs; merge back into both `main` and `dev`.
 
 
 ## Notes
