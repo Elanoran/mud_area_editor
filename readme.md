@@ -5,7 +5,7 @@ Dive into classic MUD world building with a "modern" twist! This browser based a
 ## Demo
 [https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
 
-![Screenshot of the MUD Area Editor](Screenshot.png)
+![Screenshot of the MUD Area Editor](/assets/images/Screenshot.png)
 
 ## Supported Features
 
