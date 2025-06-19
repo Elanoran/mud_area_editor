@@ -86,6 +86,19 @@ You can add new formats to `formats.json` without modifying the core code, makin
 
    Or use any other static web server (e.g., http-server from npm, nginx, etc).
 
+## Branch Model
+
+- **main**: Production-ready code; always "safe" to deploy.
+- **dev**: Integration/staging branch for the next release.  
+  - Branch off `dev` for each new feature:  
+    ```bash
+    git checkout -b feature/your-feature dev
+    ```
+  - Merge feature branches back into `dev` once they’ve been tested.
+- **feature/***: Short-lived feature branches off `dev`.
+- **hotfix/***: Urgent-fix branches off `main`; merge back into both `main` and `dev`.
+
+
 ## Notes
 
 - Default export uses the currently selected format in the dropdown.
