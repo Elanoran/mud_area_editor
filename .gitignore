@@ -14,6 +14,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# Other files
+notes.md
+
 # Mac-specific
 .AppleDouble
 .LSOverride
@@ -24,3 +27,40 @@ Desktop.ini
 *.swo
 .*.swp
 editor.code-workspace
+
+# VS Code Local History extension
+.history/
+
+# Environment files
+.env.local
+.env.*.local
+
+# Log & debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Test output
+jest-cache/
+jest-coverage/
+
+# Lockfile for CI
+package-lock.json
+
+# Caches
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Mac thumbnail database
+.AppleDB
+.AppleDesktop

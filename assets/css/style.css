@@ -197,7 +197,7 @@ canvas {
   transition: background-color 0.2s ease, transform 0.1s ease;
   cursor: pointer;
   font-family: system-ui, sans-serif;
-  height: 35px;
+  height: 26px;
   min-width: 38px;
 }
 
@@ -456,7 +456,7 @@ input[type="number"]::part(decrement) {
   padding: 2px;
 }
 
-#tool-info::-webkit-scrollbar {
+/*#tool-info::-webkit-scrollbar {
   width: 6px;
 }
 
@@ -472,7 +472,7 @@ input[type="number"]::part(decrement) {
 #tool-info {
   scrollbar-width: thin;
   scrollbar-color: #141424 transparent;
-}
+}*/
 
 .room-color-option {
   width: 22px;

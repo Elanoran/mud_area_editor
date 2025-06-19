@@ -1,3 +1,39 @@
+/**
+ * @file assets/js/main.js
+ * @description Entry point for the application; initializes scene, controls, UI, and wires all modules.
+ * @module main
+ * @author Elanoran
+ * @web https://github.com/Elanoran/mud_area_editor
+ */
+
+
+
+// --- Helper: Create a room mesh with consistent parameters ---
+function createRoomMesh({ color = '#cccccc', level = 0, id = null, name = '', desc = '' } = {}) {
+  const mesh = new THREE.Mesh(
+    // width, height, depth, segments (smoothness), radius (how round)
+    new RoundedBoxGeometry(
+      1,    // width of the box (x-axis)
+      1,    // height of the box (y-axis)
+      1,    // depth of the box (z-axis)
+      7,    // number of rounded corner segments (higher = smoother)
+      0.05  // radius of the rounded corners (0 = sharp, 0.5 = max round)
+    ),
+    new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = {
+    id,
+    exits: {},
+    exitLinks: [],
+    color,
+    level,
+    name,
+    desc
+  };
+  return mesh;
+}
 // --- Normalize direction vector utility ---
 function normalizeDirectionVector(dx, dy, dz) {
   // For cardinal and diagonal: reduce to ±1, 0 for nonzero
@@ -53,6 +89,7 @@ function getDirectionVectorKey(from, to) {
 }
 
 import * as THREE from 'https://esm.sh/three@0.157.0';
+import { RoundedBoxGeometry } from 'https://esm.sh/three@0.157.0/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { OrbitControls } from 'https://esm.sh/three@0.157.0/examples/jsm/controls/OrbitControls.js';
 
 // --- Funny random names for areaName and filename, paired by index ---
@@ -63,6 +100,12 @@ const funnyNames = [
   { area: "Secret Cow Level",   file: "cows"       },
   { area: "Damp Catacombs",     file: "secretz"    }
 ];
+
+function setRoomEmissive(material, hex) {
+  if (material && material.isMeshStandardMaterial && material.emissive) {
+    material.emissive.setHex(hex);
+  }
+}
 
 window.addEventListener('load', () => {
   window.sunAnimationActive = false;
@@ -146,7 +189,7 @@ window.addEventListener('load', () => {
   let activePuffs = [];
 
   // Fetch formats.json after window load
-  fetch('./formats.json?nocache=' + Date.now())
+  fetch('./assets/json/formats.json?nocache=' + Date.now())
     .then(response => response.json())
     .then(data => {
       formatsData = data;
@@ -245,7 +288,7 @@ window.addEventListener('load', () => {
   };
 
   // --- Surface Texture Loader Utility ---
-  let currentSurface = 'charcoal';
+  let currentSurface = 'grass';
 
   function loadSurfaceTextures(surfaceName) {
     const mat = SURFACE_MATERIALS[surfaceName];
@@ -606,12 +649,14 @@ window.addEventListener('load', () => {
     const mapById = {};
     data.forEach(entry => {
       const levelIdx = entry.level + LEVEL_OFFSET;
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1,1,1),
-        new THREE.MeshStandardMaterial({ color: entry.color, emissive: 0x000000 })
-      );
+      const mesh = createRoomMesh({
+        color: entry.color,
+        level: entry.level,
+        id: entry.id,
+        name: entry.name || '',
+        desc: entry.desc || ''
+      });
       mesh.position.set(entry.x, 0.5, entry.z);
-      mesh.userData = { id: entry.id, exits: {}, exitLinks: [], color: entry.color, level: entry.level };
       levelContainers[levelIdx].add(mesh);
       rooms[levelIdx].push(mesh);
       usedVnums.add(entry.id);
@@ -935,8 +980,7 @@ window.addEventListener('load', () => {
     const streakMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff33,
       transparent: true,
-      opacity: 1,
-      emissive: 0xffffaa
+      opacity: 1
     });
     const streakGeom = new THREE.SphereGeometry(0.13, 10, 10);
     const streak = new THREE.Mesh(streakGeom, streakMaterial);
@@ -1203,9 +1247,7 @@ window.addEventListener('load', () => {
               selectedRoom.outlineMesh.material.dispose();
               delete selectedRoom.outlineMesh;
             }
-            if (selectedRoom?.material?.emissive) {
-              selectedRoom.material.emissive.setHex(0x000000);
-            }
+            setRoomEmissive(selectedRoom?.material, 0x000000);
             selectedRoom = null;
             selectedFace = null;
             pushHistory();
@@ -1267,9 +1309,7 @@ window.addEventListener('load', () => {
             selectedRoom.outlineMesh.material.dispose();
             delete selectedRoom.outlineMesh;
           }
-          if (selectedRoom && selectedRoom.material && selectedRoom.material.emissive) {
-            selectedRoom.material.emissive.setHex(0x000000);
-          }
+          setRoomEmissive(selectedRoom?.material, 0x000000);
   // --- Animate breaking link effect ---
   function animateBreakingLink(positionArray) {
     // positionArray: [from.x, from.y, from.z, to.x, to.y, to.z]
@@ -1359,24 +1399,14 @@ window.addEventListener('load', () => {
               alert("No available vnums in range " + minVnum + "-" + maxVnum);
               return;
             }
-            // Ensure color is set from current selection or fallback
+            // Create room
             const color = selectedRoomColor || '#cccccc';
-            const box = new THREE.Mesh(
-              new THREE.BoxGeometry(1, 1, 1),
-              new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
-            );
-            box.castShadow = true;
-            box.receiveShadow = true;
+            const box = createRoomMesh({
+              color,
+              level: currentLevel,
+              id: vnum
+            });
             box.position.set(x, 0.5, z);
-            // Explicitly set material color and userData.color
-            box.material.color.set(color);
-            box.userData = {
-              id: vnum,
-              exits: {},
-              exitLinks: [],
-              color: color,
-              level: currentLevel
-            };
             levelContainers[levelIndex].add(box);
             rooms[levelIndex].push(box);
             // Animate new room pop-in (creation only, not import/restore)
@@ -1393,7 +1423,7 @@ window.addEventListener('load', () => {
 
   // --- Utility: get direction string between two rooms, for recalc ---
   // Updated for correct direction vectors and a 135° compass rotation
-  function getDirectionBetween(from, to) {
+  function getDirectionBetweenMARKED_FOR_DELETE(from, to) {
     const dx = to.x - from.x;
     const dz = to.z - from.z;
     const angle = (Math.atan2(dz, dx) * 180 / Math.PI + 360) % 360;
@@ -1411,7 +1441,7 @@ window.addEventListener('load', () => {
   }
 
   // --- Utility: get reverse direction string ---
-  function getReverseDirection(dir) {
+  function getReverseDirectionMARKED_FOR_DELETE(dir) {
     const opposites = {
       n: "s", s: "n", e: "w", w: "e",
       u: "d", d: "u",
@@ -1644,9 +1674,7 @@ window.addEventListener('load', () => {
     // Clear any highlighted room from all levels
     for (const level of rooms) {
       for (const room of level) {
-        if (room.material?.emissive) {
-          room.material.emissive.setHex(0x000000);
-        }
+        setRoomEmissive(room?.material, 0x000000);
       }
     }
 
@@ -2196,22 +2224,14 @@ window.addEventListener('load', () => {
     data.forEach(entry => {
       const levelIndex = entry.level + LEVEL_OFFSET;
       const color = entry.color || '#cccccc';
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshStandardMaterial({ color, emissive: 0x000000 })
-      );
-      box.castShadow = true;
-      box.receiveShadow = true;
-      box.position.set(entry.x, 0.5, entry.z);
-      box.userData = {
-        id: entry.id,
-        exits: {},        // <-- must be empty
-        exitLinks: [],    // <-- must be empty
+      const box = createRoomMesh({
         color,
         level: entry.level,
+        id: entry.id,
         name: entry.name || '',
         desc: entry.desc || ''
-      };
+      });
+      box.position.set(entry.x, 0.5, entry.z);
       levelContainers[levelIndex].add(box);
       rooms[levelIndex].push(box);
       idToRoom.set(entry.id, box);

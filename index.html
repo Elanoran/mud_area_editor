@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./assets/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <title>Room Editor</title>
 </head>
@@ -28,8 +28,10 @@
         <div class="field-group">
           <label>
             <div style="display: flex; align-items: center; gap: 10px;">
-              <button id="gridToggleBtn" class="ui-element" title="Toggle Grid">
-                <i class="fa-solid fa-table-cells-large" style="font-size: 30px; color: #4d4d94;margin-top: 4px;"></i>
+              <button id="gridToggleBtn" class="ui-element" title="Toggle Grid" style="padding:0 5px; color: white;">
+                <svg height="22" width="22" viewBox="0 0 1920 1920" style="margin-top: 4px;" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                  <path d="M1740 0c99.24 0 180 80.76 180 180v1560c0 99.24-80.76 180-180 180H180c-99.24 0-180-80.76-180-180V180C0 80.76 80.76 0 180 0h1560ZM894 1800v-774H120v677.25c0 53.213 43.537 96.75 96.75 96.75H894Zm0-906V120H216.75c-53.213 0-96.75 43.537-96.75 96.75V894h774Zm906 809.25V1026h-774v774h677.25c53.213 0 96.75-43.537 96.75-96.75Zm0-809.25V216.75c0-53.213-43.537-96.75-96.75-96.75H1026v774h774Z" fill-rule="evenodd"/>
+                </svg>
               </button>
               <select id="gridSelect" class="full-width"></select>
             </div>
@@ -133,6 +135,6 @@
       <li>If you made a mistake or want to redo an action, click redo or undo buttons.</li>
     </ul>
   </div>
-  <script type="module" src="editor.js" defer></script>
+  <script type="module" src="./assets/js/main.js" defer></script>
 </body>
 </html>
