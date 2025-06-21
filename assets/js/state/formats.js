@@ -5,3 +5,13 @@
  * @author Elanoran
  * @web https://github.com/Elanoran/mud_area_editor
  */
+
+export let formats = {};
+
+export function setFormats(obj) {
+  formats = obj || {};
+}
+
+export function getFormats() {
+  return formats;
+}
