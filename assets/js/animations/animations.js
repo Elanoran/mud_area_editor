@@ -13,7 +13,7 @@ import { getMainLight } from '../core/scene.js';
 import { updateFloorVisibilityButton } from '../ui/buttons.js';
 
 let activePuffs = [];
-export let groundFloorVisible = false;
+export let groundFloorVisible = true;
 
 /**
  * Updates and cleans up all active smoke and fire puffs.
@@ -389,7 +389,7 @@ export function animateSunAndFloor(show, duration = 1200) {
   }
 
   // Set to hidden on start
-  setGroundFloorVisible(false);
+  setGroundFloorVisible(true);
 
  export function spawnSmokePuff(pos, scene, count = 6) {
     // Fire puffs

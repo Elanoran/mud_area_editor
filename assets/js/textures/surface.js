@@ -8,39 +8,52 @@
 
 import { THREE } from '../vendor/three.js';
 
-// --- Surface Materials ---
 export const SURFACE_MATERIALS = {
-    grass: {
-      folder: 'assets/textures/Grass001_1K_Color',
-      base:  'Grass001_1K-JPG',
-      type:  'texture'
-    },
-    asphalt: {
-      folder: 'assets/textures/Asphalt025C_1K-JPG',
-      base:  'Asphalt025C_1K-JPG',
-      type:  'texture'
-    },
-    fabric: {
-      folder: 'assets/textures/Fabric066_1K-JPG',
-      base:  'Fabric066_1K-JPG',
-      type:  'texture'
-    },
-    blue: {
-      color: 0x3498db,
-      type: 'color'
-    },
-    sand: {
-      color: 0xf7e9b5,
-      type: 'color'
-    },
-    dirt: {
-      color: 0x8d6748,
-      type: 'color'
-    },
-    charcoal: {
-      color: 0x443e3e,
-      type: 'color'
-    }
+  grass: {
+    folder: 'assets/textures/Grass001_1K_Color',
+    base:  'Grass001_1K-JPG',
+    type:  'texture',
+    displacementScale: 0.3,
+    height: 0.6  // add your desired floor thickness here
+  },
+  asphalt: {
+    folder: 'assets/textures/Asphalt025C_1K-JPG',
+    base:  'Asphalt025C_1K-JPG',
+    type:  'texture',
+    displacementScale: 0.25,
+    height: 0.5
+  },
+  fabric: {
+    folder: 'assets/textures/Fabric066_1K-JPG',
+    base:  'Fabric066_1K-JPG',
+    type:  'texture',
+    displacementScale: 0.1,
+    height: 0.3
+  },
+  blue: {
+    color: 0x3498db,
+    type: 'color',
+    displacementScale: 0,
+    height: 0.6
+  },
+  sand: {
+    color: 0xf7e9b5,
+    type: 'color',
+    displacementScale: 0,
+    height: 0.6
+  },
+  dirt: {
+    color: 0x8d6748,
+    type: 'color',
+    displacementScale: 0,
+    height: 0.6
+  },
+  charcoal: {
+    color: 0x443e3e,
+    type: 'color',
+    displacementScale: 0,
+    height: 0.6
+  }
 };
 
 /**

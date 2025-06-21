@@ -46,6 +46,8 @@ export function initUI() {
     const idx = Math.floor(Math.random() * areaNames.length);
     areaNameInput.value = areaNames[idx].area;
     filenameInput.value = areaNames[idx].file;
+    setAreaNameInput(areaNameInput);
+    setFilenameInput(filenameInput);
   }
 
   //–– Area‐info toggle button

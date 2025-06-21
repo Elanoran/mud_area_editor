@@ -6,7 +6,8 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
-import { minVnum, maxVnum, usedVnums, setLastAssignedVnum, getLastAssignedVnum } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum, getLastAssignedVnum } from '../core/state.js';
+import { minVnum, maxVnum } from '../core/settings.js';
 import { getRoomCenter } from '../utils/geometry.js';
 
 export function getNextVnum() {

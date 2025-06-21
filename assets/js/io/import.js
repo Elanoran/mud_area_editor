@@ -11,7 +11,8 @@ import { levelContainers } from '../core/store.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
 import { createRoomMesh, getRoomCenter } from '../utils/geometry.js';
 import { createExitLine } from '../scene/exits.js';
-import { minVnum, setMinVnum, setMaxVnum, usedVnums, setLastAssignedVnum } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum } from '../core/state.js';
+import { minVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { switchLevel, currentLevel } from '../core/level.js';
 import { pushHistory } from '../state/history.js';
 

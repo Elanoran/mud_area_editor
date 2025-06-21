@@ -23,7 +23,7 @@ import { animateRoomPopIn, animateBreakingLink } from '../animations/animations.
 import { setRoomEmissive }from '../textures/surface.js';
 import { pushHistory } from '../state/history.js';
 import { getNextVnum } from '../state/rooms.js';
-import { minVnum, maxVnum } from '../core/state.js';
+import { minVnum, maxVnum } from '../core/settings.js';
 import { selectedRoomColor } from '../ui/buttons.js';
 import { gridSize } from '../scene/grid.js';
 import { handleRoomCreationPointerDown } from '../state/rooms.js';

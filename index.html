@@ -7,12 +7,10 @@
   <title>Room Editor</title>
 </head>
 <body>
-  <div class="file-controls">
-    <button id="exportFormatBtn" class="ui-element">Export As</button>
-    <select id="exportFormat" class="ui-element"></select>
-    <button id="importJsonBtn" class="ui-element">Import JSON</button>
-    <input type="file" id="importInput" accept=".json" style="display:none">
-    <button id="helpBtn" class="ui-element">Help</button>
+  <div class="header-brand">
+    <a href="https://github.com/Elanoran/mud_area_editor" class="branding">
+      <img src="assets/images/brand-logo-small.png" alt="Mud Area Editor" class="logo">
+    </a>
   </div>
   <div class="editor-wrapper">
     <div id="sidebar">
@@ -21,46 +19,67 @@
           <button id="undoBtn" class="ui-element" title="Undo">↺</button>
           <button id="redoBtn" class="ui-element" title="Redo">↻</button>
           <button id="cleanSceneBtn" class="ui-element" title="Clean Scene"><i class="fa-solid fa-broom"></i></button>
-          <button id="deleteRoomBtn" class="ui-element" title="Delete Room"><i class="fa-solid fa-trash"></i></button>
-          <button id="floorToggleBtn" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
-          <button id="fitViewBtn" class="ui-element" title="Lock"><i class="fa-solid fa-lock"></i>
+          <button id="floorToggleBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
+          <button id="fitViewBtn" class="ui-element" title="Lock"><i class="fa-solid fa-lock"></i></button>
+          <button id="helpBtn" class="ui-element" title="Help" style="cursor: pointer;">
+            <i class="fa-solid fa-info" style="pointer-events: none;"></i>
+          </button>
         </div>
-        <div class="field-group">
-          <label>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <button id="gridToggleBtn" class="ui-element" title="Toggle Grid" style="padding:0 5px; color: white;">
-                <svg height="22" width="22" viewBox="0 0 1920 1920" style="margin-top: 4px;" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                  <path d="M1740 0c99.24 0 180 80.76 180 180v1560c0 99.24-80.76 180-180 180H180c-99.24 0-180-80.76-180-180V180C0 80.76 80.76 0 180 0h1560ZM894 1800v-774H120v677.25c0 53.213 43.537 96.75 96.75 96.75H894Zm0-906V120H216.75c-53.213 0-96.75 43.537-96.75 96.75V894h774Zm906 809.25V1026h-774v774h677.25c53.213 0 96.75-43.537 96.75-96.75Zm0-809.25V216.75c0-53.213-43.537-96.75-96.75-96.75H1026v774h774Z" fill-rule="evenodd"/>
-                </svg>
-              </button>
-              <select id="gridSelect" class="full-width"></select>
-            </div>
-          </label>
-        </div>
-        <div class="field-group">
-          <label for="roomColorOptions"></label>
-          <div id="roomColorOptions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;">
-            <button class="room-color-option" data-color="#e74c3c" style="background:#e74c3c;" title="Red"></button>
-            <button class="room-color-option" data-color="#f39c12" style="background:#f39c12;" title="Orange"></button>
-            <button class="room-color-option" data-color="#f1c40f" style="background:#f1c40f;" title="Yellow"></button>
-            <button class="room-color-option" data-color="#2ecc71" style="background:#2ecc71;" title="Green"></button>
-            <button class="room-color-option" data-color="#3498db" style="background:#3498db;" title="Blue"></button>
-            <button class="room-color-option" data-color="#9b59b6" style="background:#9b59b6;" title="Purple"></button>
-            <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
-            <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
-          </div>
-          <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
-        </div>
+        <hr style="width: 100%;border: none; border-top: 1px solid #404059; margin: 0;">
         <div class="tab-row">
           <div class="tab-header" style="flex-grow: 1;">
-            <button class="tab-button active" data-tab="areaTab">Area</button>
+            <button class="tab-button active" data-tab="gridTab">Grid</button>
+            <button class="tab-button" data-tab="areaTab">Area</button>
             <button class="tab-button" data-tab="roomTab">Room</button>
           </div>
         </div>
 
         <div id="areaInfoContainer">
-          <div id="areaTab" class="tab-content active">
+          <div id="gridTab" class="tab-content active">
+            <div class="toolbar" style="display: flex; gap: 6px; margin-bottom: 0;flex-direction: initial;">
+              <button id="floorToggleBtn" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye"></i></button>
+              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+            </div>
             <div class="field-group">
+              <div style="display: flex; align-items: center; gap: 10px;margin-top: 5px;">
+                <button id="gridToggleBtn" class="ui-element" title="Toggle Grid" style="padding:0 5px; color: #e6ded3;;">
+                  <svg height="22" width="22" viewBox="0 0 1920 1920" style="margin-top: 4px;margin-left: -4px;" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                    <path d="M1740 0c99.24 0 180 80.76 180 180v1560c0 99.24-80.76 180-180 180H180c-99.24 0-180-80.76-180-180V180C0 80.76 80.76 0 180 0h1560ZM894 1800v-774H120v677.25c0 53.213 43.537 96.75 96.75 96.75H894Zm0-906V120H216.75c-53.213 0-96.75 43.537-96.75 96.75V894h774Zm906 809.25V1026h-774v774h677.25c53.213 0 96.75-43.537 96.75-96.75Zm0-809.25V216.75c0-53.213-43.537-96.75-96.75-96.75H1026v774h774Z" fill-rule="evenodd"/>
+                  </svg>
+                </button>
+                <select id="gridSelect" class="full-width"></select>
+              </div>
+            </div>
+            <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
+            <!-- Add more grid-specific controls here as needed -->
+            <div class="field-group" style="margin-top: 10px;">
+              <label for="surfaceSelect">Surface Material:<br>
+                <select id="surfaceSelect" class="full-width">
+                  <option value="grass">Grass</option>
+                  <option value="asphalt">Asphalt</option>
+                  <option value="fabric">Fabric</option>
+                  <option value="blue">Blue</option>
+                  <option value="sand">Sand</option>
+                  <option value="dirt">Dirt</option>
+                  <option value="charcoal">Charcoal</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div id="areaTab" class="tab-content">
+            <div class="toolbar" style="display: flex; gap: 6px; margin-bottom: 0;flex-direction: initial;">
+              <button id="floorToggleBtn3" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
+              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+            </div>
+            <div class="field-group" style="margin-top: 10px;">
               <label>Area Name:<br>
                 <input type="text" id="areaName" class="full-width">
               </label>
@@ -85,8 +104,41 @@
                 </label>
               </div>
             </div>
+            <hr style="width: 100%;border: none; border-top: 1px solid #404059; margin: 0;">
+            <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="importJsonBtn" class="ui-element" title="Import JSON"><i class="fa-solid fa-upload"></i></button>
+                <input type="file" id="importInput" accept=".json" style="display:none">
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <button id="exportFormatBtn" class="ui-element" title="Export As"><i class="fa-solid fa-save"></i></button>
+                <select id="exportFormat" class="ui-element" style="flex: 1 1 150px; font-size: 1em; height: 2.4em; margin-bottom: 4px;"></select>
+              </div>
+            </div>
           </div>
           <div id="roomTab" class="tab-content">
+            <div class="toolbar" style="display: flex; flex-direction: initial; gap: 6px;">
+              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+              <button id="deleteRoomBtn" class="ui-element" title="Delete Room"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <div class="field-group">
+            <label for="roomColorOptions"></label>
+            <div id="roomColorOptions" style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="room-color-option" data-color="#e74c3c" style="background:#e74c3c;" title="Red"></button>
+              <button class="room-color-option" data-color="#f39c12" style="background:#f39c12;" title="Orange"></button>
+              <button class="room-color-option" data-color="#f1c40f" style="background:#f1c40f;" title="Yellow"></button>
+              <button class="room-color-option" data-color="#2ecc71" style="background:#2ecc71;" title="Green"></button>
+              <button class="room-color-option" data-color="#3498db" style="background:#3498db;" title="Blue"></button>
+              <button class="room-color-option" data-color="#9b59b6" style="background:#9b59b6;" title="Purple"></button>
+              <button class="room-color-option" data-color="#ffffff" style="background:#ffffff; border:1px solid #aaa;" title="White"></button>
+              <button class="room-color-option" data-color="#95a5a6" style="background:#95a5a6;" title="Gray"></button>
+            </div>
+            <hr style="border: none; border-top: 1px solid #404059; margin: 10px 0 0;">
+        </div>
             <div class="field-group">
               <label>
                 VNUM:

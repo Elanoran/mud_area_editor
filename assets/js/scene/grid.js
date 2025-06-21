@@ -12,12 +12,9 @@ import { groundFloorVisible } from '../animations/animations.js';
 import { currentLevel, updateFloorToLowestLevel } from '../core/level.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
 import { updateCompassLabels } from '../scene/compass.js';
+import { getCurrentSurface, setCurrentSurface as setSurface } from '../core/settings.js';
 
-/* 
- * grass, asphalt, fabric, blue, sand, dirt, charcoal
- */
-let currentSurface = 'charcoal';
-let surfaceTextures = loadSurfaceTextures(currentSurface);
+let surfaceTextures = loadSurfaceTextures(getCurrentSurface());
 
 // grid
 export let grid;
@@ -32,8 +29,8 @@ export function getGridSize() {
 }
 
 export function setCurrentSurface(type) {
-  currentSurface = type;
-  surfaceTextures = loadSurfaceTextures(currentSurface);
+  setSurface(type); // Calls the imported setter, not itself
+  surfaceTextures = loadSurfaceTextures(type);
 }
 
 export function getCurrentSurfaceTextures() {
@@ -69,13 +66,17 @@ export function updateGrid(width, height) {
 
   // Remove ALL previous floor meshes from ALL levels, not just the current
   for (let key in floorMeshes) {
-    if (floorMeshes[key]) {
-      levelContainers[key].remove(floorMeshes[key]);
-      floorMeshes[key].geometry.dispose();
-      floorMeshes[key].material.dispose();
-      delete floorMeshes[key];
+  if (floorMeshes[key]) {
+    // Handle "skirt" keys like "3_skirt" by extracting the numeric part
+    const baseIdx = parseInt(key, 10);
+    if (!isNaN(baseIdx) && levelContainers[baseIdx]) {
+      levelContainers[baseIdx].remove(floorMeshes[key]);
     }
+    floorMeshes[key].geometry?.dispose();
+    floorMeshes[key].material?.dispose();
+    delete floorMeshes[key];
   }
+}
 
     // Create new floor mesh for the current level only
     // Use high subdivisions for detailed displacement

@@ -6,13 +6,14 @@
  */
 
 import { updateRoomInfo } from '../ui/roomInfo.js';
+import { minVnum } from '../core/settings.js';
+import { updateFloorToLowestLevel } from '../core/level.js';
+import { getCurrentFloorSize } from '../core/level.js';
  
 export let selectedFace = null;
 export let selectedRoom = null;
 export let isDragging = false;
 
-export let minVnum = 100;
-export let maxVnum = 199;
 export const usedVnums = new Set();
 export let lastAssignedVnum = minVnum - 1;
 
@@ -44,14 +45,6 @@ export function getLastAssignedVnum() {
   return lastAssignedVnum;
 }
 
-export function setMinVnum(val) {
-  minVnum = val;
-}
-
-export function setMaxVnum(val) {
-  maxVnum = val;
-}
-
 export function clearUsedVnums() {
   usedVnums.clear();
 }
@@ -60,8 +53,15 @@ export function clearLastAssignedVnum() {
   lastAssignedVnum = minVnum - 1;
 }
 
+let floorUpdateTimeout = null;
+
 export function setAreaNameInput(el) {
   areaNameInput = el;
+  if (floorUpdateTimeout) clearTimeout(floorUpdateTimeout);
+  floorUpdateTimeout = setTimeout(() => {
+    const [width, height] = getCurrentFloorSize();
+    updateFloorToLowestLevel(width, height);
+  }, 100); // 100ms debounce delay
 }
 export function setFilenameInput(el) {
   filenameInput = el;

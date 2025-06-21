@@ -1,6 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap');
+
 html, body {
   height: 100%;
   margin: 0;
+}
+
+.branding .logo {
+  height: 52px;
+  opacity: 75%;
 }
 
 :root {
@@ -17,10 +24,10 @@ body {
   padding-top: 0;
 }
 
-.file-controls {
+.header-brand {
   position: fixed;
-  top: 16px;
-  right: 24px;
+  top: 10px;
+  right: 10px;
   z-index: 200;
   display: flex;
   flex-direction: row;
@@ -29,6 +36,20 @@ body {
   background: none;
   box-shadow: none;
   border: none;
+}
+
+.header-brand a {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.7em;
+  color: #fff;
+  height: 100%;
+}
+
+ .header-brand a:link, .header-brand a:visited {
+      text-decoration: none;
 }
 
 #sidebar,#levelSelectorBox {
@@ -41,7 +62,7 @@ body {
   top: 10px;
   z-index: 150;
   border-radius: 8px;
-  box-shadow: 0 5px 6px #0000003b, 0 0 10px 2px #fff0 inset, 0 0 0 3px #ffffff08 inset;
+  box-shadow: 0 5px 6px #00000014, 0 0 10px 2px #fff0 inset, 0 0 0 3px #ffffff08 inset;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -99,7 +120,7 @@ body {
 }
 .level-item.center {
   background: #4d4d94;
-  color: #ffffffa1;
+  color: #e6ded3;
   font-size: 1em;
   font-weight: 500;
   cursor: default;
@@ -189,11 +210,12 @@ canvas {
 .ui-element {
   padding: 0 12px;
   font-size: 12px;
-  background-color: #3a3a4d;
-  color: #ffffff;
+  background-color: #42425b;
+  color: #e6ded3;
   border: 1px #1f1f2f;
   border-radius: 6px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.11);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
   transition: background-color 0.2s ease, transform 0.1s ease;
   cursor: pointer;
   font-family: system-ui, sans-serif;
@@ -248,7 +270,8 @@ canvas {
   border: 1px solid #4d4d94;
   border-radius: 4px;
   background-color: #3a3a4d;
-  color: #ffffff;
+  color: #bfab90;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
   margin-top: 5px;
 }
 
@@ -301,9 +324,10 @@ canvas {
   border: 1px solid #4d4d94;
   border-radius: 4px;
   background-color: #3a3a4d;
-  color: #ffffff;
+  color: #b9b1a5;
   margin-top: 5px;
   margin-bottom: 10px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 #tool-info input:focus {
@@ -531,16 +555,17 @@ input[type="number"]::part(decrement) {
 
 .tab-button {
   padding: 6px 12px;
-  background-color: #3a3a4d;
-  color: white;
-  border: 1px solid #4d4d94;
+  background-color: #3b3b4f;
+  color: #ececec;
+  border: 1px solid #272b29;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
   font-size: 12px;
 }
 
 .tab-button.active {
-  background-color: #4d4d94;
+  background-color: #5e5e82;
+  font-weight: bold;
   font-weight: bold;
 }
 
@@ -616,8 +641,15 @@ input[type="number"]::part(decrement) {
 .toolbar .fa-solid,
 .toolbar .fa-regular,
 .toolbar .fa-light,
+.toolbar .fa-lock,
 .toolbar .fa-duotone {
-  font-size: 15px;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+i.fa-solid.fa-lock {
   width: 1em;
   height: 1em;
   line-height: 1;
@@ -629,20 +661,21 @@ input[type="number"]::part(decrement) {
   padding-left: 0 !important;
   list-style-type: none;
   font-size: 13px;
-  color: #d6e4fa;
+  color: #e6ded3;
   max-height: 160px;
   overflow-y: auto;
 }
 
 #roomExitsList li {
   margin-bottom: 4px;
-  padding: 2px 0 2px 5px;
+  padding: 4px 0 4px 10px;
   border-left: 3px solid #4d4d94;
   transition: background 0.13s;
   cursor: pointer;
 }
 
 #roomExitsList li:hover {
-  background: #32324d;
+  background: #223;
+  border-radius: 4px;
   color: #fff;
 }

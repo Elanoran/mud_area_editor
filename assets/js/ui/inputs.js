@@ -6,12 +6,42 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
-import { minVnum, maxVnum, setMinVnum, setMaxVnum, usedVnums, setLastAssignedVnum } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum } from '../core/state.js';
+import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { selectedRoom } from '../core/state.js';
 import { rooms } from '../core/store.js';
+import { updateFloorToLowestLevel, getCurrentFloorSize } from '../core/level.js';
+import { setCurrentSurface } from '../scene/grid.js';
 
 // assets/js/ui/inputs.js
 export function initRoomFieldListeners() {
+  // --- Watch for changes to Area Name input and update floor ---
+  const areaNameInput = document.getElementById('areaName');
+  if (areaNameInput) {
+    areaNameInput.addEventListener('input', () => {
+      const [width, height] = getCurrentFloorSize();
+      updateFloorToLowestLevel(width, height);
+    });
+  }
+
+  // --- Watch for changes to Filename input (future-proof, no-op for now) ---
+  const filenameInput = document.getElementById('filename');
+  // If you want: filenameInput.addEventListener('input', ...) here
+
+  // --- Watch for changes to Surface Material dropdown and update floor ---
+  const surfaceSelect = document.getElementById('surfaceSelect');
+  if (surfaceSelect) {
+    let floorUpdateTimeout = null;
+    surfaceSelect.addEventListener('change', () => {
+      setCurrentSurface(surfaceSelect.value);
+      if (floorUpdateTimeout) clearTimeout(floorUpdateTimeout);
+      floorUpdateTimeout = setTimeout(() => {
+        const [width, height] = getCurrentFloorSize();
+        updateFloorToLowestLevel(width, height);
+      }, 100); // 100ms debounce delay to allow textures to load
+    });
+  }
+
   // Only pushHistory on blur if value changed
   let lastRoomName = '';
   let lastRoomDesc = '';

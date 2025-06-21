@@ -8,9 +8,8 @@
 import { undoStack, redoStack, MAX_HISTORY, restoreState, clearUndoStack, clearRedoStack, pushHistory } from '../state/history.js';
 import { gridLocked, setGridLocked } from '../ui/init.js';
 import { switchLevel, currentLevel } from '../core/level.js';
-import { selectedRoom, setSelectedRoom, minVnum, maxVnum,
-         setMinVnum, setMaxVnum, clearUsedVnums, clearLastAssignedVnum,
-         areaNameInput, filenameInput } from '../core/state.js';
+import { selectedRoom, setSelectedRoom, clearUsedVnums, clearLastAssignedVnum, areaNameInput, filenameInput, setAreaNameInput, setFilenameInput } from '../core/state.js';
+import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { levelContainers, rooms } from '../core/store.js';
 import { setGroundFloorVisible, groundFloorVisible, animateRoomFallAndExplode, animateRoomExplode } from '../animations/animations.js';
 import { LEVEL_OFFSET, areaNames } from '../constants/index.js';
@@ -21,6 +20,8 @@ import { freeVnum } from '../state/rooms.js';
 import { getScene } from '../core/scene.js';
 import { updateRoomInfo } from '../ui/roomInfo.js';
 import { grid, setGridVisible, getGridVisible } from '../scene/grid.js';
+import { updateFloorToLowestLevel } from '../core/level.js';
+import { getCurrentFloorSize } from '../core/level.js';
 
 export let selectedRoomColor = '#8888ff';
 
@@ -143,8 +144,8 @@ cleanBtn.addEventListener('click', () => {
     // --- Reset area name and filename to new random funny names ---
     if (areaNameInput && filenameInput) {
     const idx = Math.floor(Math.random() * areaNames.length);
-    areaNameInput.value = areaNames[idx].area;
-    filenameInput.value = areaNames[idx].file;
+    setAreaNameInput(areaNames[idx].area);
+    setFilenameInput(areaNames[idx].file);
     }
     // Push a new baseline history state after cleaning the scene
     pushHistory();
@@ -193,6 +194,9 @@ export function updateFloorVisibilityButton() {
 if (floorToggleBtn) {
     floorToggleBtn.addEventListener('click', () => {
       setGroundFloorVisible(!groundFloorVisible);
+
+      const [width, height] = getCurrentFloorSize();
+      updateFloorToLowestLevel(width, height);
     });
 }
 
@@ -578,3 +582,7 @@ document.getElementById('exportFormatBtn')?.addEventListener('click', () => {
   document.getElementById('importJsonBtn')?.addEventListener('click', () => {
     document.getElementById('importInput')?.click();
   });
+
+export function isGroundFloorVisible() {
+  return groundFloorVisible;
+}
