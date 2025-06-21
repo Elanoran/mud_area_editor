@@ -4,10 +4,10 @@ Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and 
 
 ## Demo
 
-[ Main ] Behold, brave dungeon architect! Venture forth to a tested, dragon-approved realm:
+[ Main ] Behold, brave dungeon architect! Venture forth to a tested, dragon-approved realm:  
 [https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
 
-[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control.
+[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control.  
 [https://mud-area-editor.pages.dev/](https://mud-area-editor.pages.dev/)
 
 Feast your eyes upon a screenshot of our mechanical familiars at work:
