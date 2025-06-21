@@ -4,10 +4,12 @@ Dive into classic MUD world building with a "modern" twist! This browser based a
 
 ## Demo
 
-[ Main ] Behold, brave dungeon architect! Venture forth to a tested, dragon-approved realm:
+[ Main ] Behold, brave dungeon architect! Venture forth to a tested, dragon-approved realm:  
+
 [https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
 
-[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control.
+[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control:  
+
 [https://mud-area-editor.pages.dev/](https://mud-area-editor.pages.dev/)
 
 ![Screenshot of the MUD Area Editor](Screenshot.png)
