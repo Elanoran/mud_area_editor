@@ -1,26 +1,31 @@
 # MUD Area Editor
 
-Dive into classic MUD world building with a "modern" twist! This browser based area editor lets you visually create, edit, and manage rooms, exits, and areas for your favorite MUD codebases including ROM and JSON format for backup. Instantly shape your dungeon’s map, fine tune layouts, and export with ease all from the comfort of your web browser.
+Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and m(ulti-)u(ser) d(omain).] world mapshaper, to the Most Convenient Area Editor in the Multiverse (or at least the Internet). Whether you’re crafting a dank oubliette beneath a questionable tavern or a sunlit glade frequented by musical pixies with identity crises, this tool spares you the torment of scribbling ASCII diagrams on tavern napkins. Instead, you point'n click, drag'n drop, and generally conduct your dungeon-building with all the ease of rearranging rooms in the Shades (but with significantly fewer pickpockets).
 
 ## Demo
+
+Behold, brave dungeon architect! Venture forth to:
 [https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
 
+Feast your eyes upon a screenshot of our mechanical familiars at work:
 ![Screenshot of the MUD Area Editor](/assets/images/Screenshot.png)
 
 ## Supported Features
 
-- Grid-based room layout per level
-- Room VNUM, name, description editing
-- Support for multiple export formats:
-  - **ROM**
-  - **AW**
-- JSON import/export for sharing and backups
-- Live room linking and directional exits
-- Area-level metadata: filename, VNUM ranges, etc.
+Imagine a pantheon of features so robust even the Gods of Chaos would nod in approval:
+
+- **Grid-based Room Layout**: Like plotting a map of Olympus’s back alleys, but without the risk of being pickpocketed. Arrange rooms on a grid and watch your labyrinth take shape.
+- **Room Editing**: Grant each room its identity, be it “The Gloomy Cellar of Questionable Smells” or “Elan’s Suspect Library Annex.” VNUMs keep the bureaucrats happy; descriptions keep adventurers from complaining.
+- **Support for Multiple Export Formats**:
+- **ROM**: For the traditionalist who believes in sacred scrolls (file format scrolls, that is).
+- **AW**: For those who enjoy a different incantation when summoning their area files.
+- **JSON Import/Export**: Because nothing says “I trust my code” like backing it up to a format readable by goats (or other JSON parsers).
+- **Live Room Linking**: Exits appear faster than a wizard’s teleportation spell. Link rooms north, south, or “through that door that really shouldn’t exist but somehow does.”
+- **Area-level Metadata**: Keep your metadata tidier than a dwarf’s beard on market day. Define ranges so your rooms don’t wander off into someone else’s dungeon.
 
 ## Format Template Support
 
-All supported formats use templates stored in `formats.json`:
+Deep within `formats.json` lie the templates. Tinker to your heart’s content:
 
 ```json
 {
@@ -32,16 +37,8 @@ All supported formats use templates stored in `formats.json`:
       "exit": "D%DIRECTION%\n%DOOR_DESC%~\n%KEYWORDS%~\n%FLAGS% %KEY% %TO_VNUM%\n",
       "extra": "E\n%KEYWORDS%~\n%EXTRA_DESC%~\n",
       "dirLabels": [
-        "North",
-        "East",
-        "South",
-        "West",
-        "Up",
-        "Down",
-        "Northeast",
-        "Northwest",
-        "Southeast",
-        "Southwest"
+        "North", "East", "South", "West", "Up", "Down",
+        "Northeast", "Northwest", "Southeast", "Southwest"
       ]
     },
     "AW": {
@@ -62,46 +59,46 @@ All supported formats use templates stored in `formats.json`:
 }
 ```
 
-You can add new formats to `formats.json` without modifying the core code, making this editor easily extendable.
+Tweak `formats.json` as you like; our code politely accommodates new rites without complaint.
 
 ## Usage
 
-1. Launch `index.html` in a browser.
-2. Use the sidebar to input room data.
-3. Click to place and link rooms.
-4. Use export/import buttons to work with file formats or JSON.
-5. This editor loads resources via JavaScript, so a web server is required to avoid CORS or file access issues. You can use Python’s built-in server for quick testing:
-
-   For Python 3:
-   ```bash
-   python3 -m http.server
-   ```
-
-   Then open your browser to `http://localhost:8000`.
-
-   For Python 2:
-   ```bash
-   python -m SimpleHTTPServer
-   ```
-
-   Or use any other static web server (e.g., http-server from npm, nginx, etc).
+1. **Launch `index.html` in a Browser**  
+   Like opening an ancient tome, but without the smell of mildew (though a hint of adventure lingers).
+2. **Use the Sidebar to Input Room Data**  
+   Name rooms, pen their descriptions, just don’t write anything that might summon eldritch horrors (unless intended).
+3. **Shift Click to Place and Link Rooms**  
+   Place rooms on the map canvas; connect exits faster than you can say “nearly forgot to add that trapdoor.”
+4. **Export/Import Buttons**  
+   Export when you wish to share with fellow conspirators; import when you recover from an accidental planar shift.
+5. **Serve Over a Web Server to Avoid CORS Issues**  
+   This editor loads resources via JavaScript, so summon a simple server:
+   - For Python 3:  
+     ```bash
+     python3 -m http.server
+     ```
+     Then visit `http://localhost:8000`.
+   - For Python 2:  
+     ```bash
+     python -m SimpleHTTPServer
+     ```
+   Or any other static web server, just don’t use carrier pigeons for file delivery, unless you enjoy delays.
 
 ## Branch Model
 
 - **`main`**  
-  Production-ready code; always safe to deploy.
-
+  The sacred branch, as stable as a wizard’s pension (i.e., rarely changes, but reliable as a chicken in labor).
 - **`dev`**  
-  Integration/staging branch for the next release.  
+  The workshop of chaos: where ideas ferment, tests break things, and occasional genius emerges.
 
 ## Notes
 
-- Default export uses the currently selected format in the dropdown.
-- Rooms without names or descriptions will use the VNUM as fallback.
-- AW and ROM formats currently have the best support.
+- Default export uses the currently selected format in the dropdown; treat it like choosing between tea or something stronger.
+- Rooms without names or descriptions will default to VNUM; like an unnamed alleyway, it still leads somewhere.
+- AW and ROM formats currently strut their stuff best; others may require spells of adjustment.
 
 ---
 
 ## Disclaimer
 
-This project is a **work in progress**. No extensive testing has been done. Use at your own risk and always keep backups.
+This project is a **work in progress**, much like a novice wizard’s apprenticeship. No extensive testing has been done. Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).
