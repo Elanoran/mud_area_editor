@@ -18,7 +18,7 @@ export function updateRoomInfo(room) {
     if (!room || !room.id) return;
     const coordField = document.getElementById('roomVnumCoords');
     if (coordField) {
-    coordField.value = `(${room.x.toFixed(1)}, ${room.z.toFixed(1)}, ${room.level})`;
+    coordField.value = `(${room.position.x.toFixed(1)}, ${room.position.z.toFixed(1)}, ${room.position.y.toFixed(1)})`;
     }
 
     const exitsList = document.getElementById('roomExitsList');
