@@ -19,6 +19,7 @@ import { initRoomFieldListeners } from './ui/inputs.js';
 import { registerPointerupHandler } from './interaction/dragging.js';
 import { registerLevelWheel } from './ui/levelWheel.js';
 import { handlePointerDown } from './interaction/selection.js';
+import { recalculateAvailableVnums } from './core/state.js';
 
 window.addEventListener('load', () => {
 
@@ -71,5 +72,8 @@ window.addEventListener('load', () => {
 
   // --- Register level wheel UI handler ---
   registerLevelWheel();
+
+  // Recalculate available VNUMs after initialization
+  recalculateAvailableVnums();
 
 });

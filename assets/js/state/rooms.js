@@ -6,7 +6,7 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
-import { usedVnums, setLastAssignedVnum, getLastAssignedVnum } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum, getLastAssignedVnum, availableVnums } from '../core/state.js';
 import { minVnum, maxVnum } from '../core/settings.js';
 import { getRoomCenter } from '../utils/geometry.js';
 
@@ -14,6 +14,7 @@ export function getNextVnum() {
     for (let v = minVnum; v <= maxVnum; v++) {
       if (!usedVnums.has(v)) {
         usedVnums.add(v);
+        availableVnums.delete(v);
         if (v > getLastAssignedVnum()) setLastAssignedVnum(v);
         return v;
       }
@@ -23,6 +24,7 @@ export function getNextVnum() {
 
  export function freeVnum(vnum) {
     usedVnums.delete(vnum);
+    if (vnum >= minVnum && vnum <= maxVnum) availableVnums.add(vnum);
     if (vnum < getLastAssignedVnum()) {
       // allow future use, but not reassign immediately
     } else if (vnum === getLastAssignedVnum()) {
@@ -90,8 +92,6 @@ export function handleRoomCreationPointerDown(event, context) {
     rooms,
     levelContainers,
     getNextVnum,
-    minVnum,
-    maxVnum,
     selectedRoomColor,
     createRoomMesh,
     animateRoomPopIn,
@@ -115,9 +115,13 @@ export function handleRoomCreationPointerDown(event, context) {
         if (existingIndex !== -1) {
           return;
         } else {
+          if (availableVnums.size === 0) {
+            alert(`No available vnums in range ${minVnum}-${maxVnum}`);
+            return;
+          }
           const vnum = getNextVnum();
           if (vnum === null) {
-            alert("No available vnums in range " + minVnum + "-" + maxVnum);
+            alert(`No available vnums in range ${minVnum}-${maxVnum}`);
             return;
           }
           const color = selectedRoomColor || '#cccccc';

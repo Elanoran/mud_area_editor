@@ -30,6 +30,13 @@ export const SURFACE_MATERIALS = {
     displacementScale: 0.1,
     height: 0.3
   },
+  glass: {
+    folder: 'assets/textures/Glass02_1K',
+    base:  'Glass02_AO_1K',
+    type:  'texture',
+    displacementScale: 0.1,
+    height: 0.3
+  },
   blue: {
     color: 0x3498db,
     type: 'color',

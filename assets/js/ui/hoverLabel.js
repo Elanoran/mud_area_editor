@@ -1,4 +1,4 @@
- /**
+/**
  * @file assets/js/ui/hoverLabel.js
  * @module ui/hoverLabel
  * @description labels.
@@ -51,8 +51,7 @@ export function setupRoomHover(renderer, camera, controls, raycaster, mouse, upd
          hoverRoom = room;
          const name = room.userData.name || '';
          const vnum = room.userData.id != null ? String(room.userData.id) : '';
-         const labelText = `${name ? name + ' ' : ''}(${vnum})`;
-         hoverLabel = makeRoomLabel(labelText);
+         hoverLabel = makeRoomLabel(vnum, name);
          hoverLabel.position.copy(room.position);
          hoverLabel.position.y += 1.2; // raise label above room
          levelContainers[room.userData.level + LEVEL_OFFSET].add(hoverLabel);
@@ -96,28 +95,33 @@ export function registerMouseleaveHandler(renderer) {
 }
 
 // --- Utility: create a floating label (sprite) for a room ---
-  function makeRoomLabel(text) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = 320;
-    canvas.height = 64;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.font = 'bold 24px sans-serif';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = '#fff';
-    context.shadowColor = 'black';
-    context.shadowBlur = 4;
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.SpriteMaterial({
-      map: texture,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false
-    });
-    const sprite = new THREE.Sprite(material);
-    sprite.scale.set(3, 0.6, 1);
-    sprite.renderOrder = 9999;
-    return sprite;
-  }
+  function makeRoomLabel(vnum, name) {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  context.font = 'bold 24px sans-serif';
+  const label = name ? `(${vnum}) ${name}` : `(${vnum})`;
+  const textWidth = context.measureText(label).width;
+  const padding = 48;
+  canvas.width = Math.max(320, textWidth + padding);
+  canvas.height = 64;
+  context.font = 'bold 24px sans-serif';
+  context.textAlign = 'center';
+  context.fillStyle = '#fff';
+  context.shadowColor = 'black';
+  context.shadowBlur = 4;
+  context.textBaseline = 'middle';
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillText(label, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(canvas.width / 160, 0.6, 1); // adjust width scaling for bigger canvases
+  sprite.renderOrder = 9999;
+  return sprite;
+}

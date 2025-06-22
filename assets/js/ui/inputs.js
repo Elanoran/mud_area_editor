@@ -6,7 +6,7 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
-import { usedVnums, setLastAssignedVnum } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum, recalculateAvailableVnums } from '../core/state.js';
 import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { selectedRoom } from '../core/state.js';
 import { rooms } from '../core/store.js';
@@ -114,28 +114,54 @@ export function initRoomFieldListeners() {
   // Set initial values in the inputs on load
     const vnumMinInput = document.getElementById('vnumMin');
     const vnumMaxInput = document.getElementById('vnumMax');
+
+    let shadowMin = minVnum;
+    vnumMinInput.addEventListener('focus', () => {
+      shadowMin = parseInt(vnumMinInput.value, 10) || 0;
+    });
+
+    let shadowMax = maxVnum;
+    vnumMaxInput.addEventListener('focus', () => {
+      shadowMax = parseInt(vnumMaxInput.value, 10) || 9999;
+    });
   
     if (vnumMinInput && vnumMaxInput) {
       vnumMinInput.value = minVnum;
       vnumMaxInput.value = maxVnum;
   
-      // Listen for user changes
-      vnumMinInput.addEventListener('input', () => {
-        setMinVnum(parseInt(vnumMinInput.value) || 0);
-        setLastAssignedVnum(minVnum - 1);
-        usedVnums.clear();
-        rooms.forEach(level => level.forEach(r => usedVnums.add(r.userData.id)));
+      // On blur, commit vnum change
+      vnumMinInput.addEventListener('blur', () => {
+        const newMin = parseInt(vnumMinInput.value, 10) || 0;
+        const existingVnums = [];
+        rooms.forEach(level => level.forEach(r => existingVnums.push(r.userData.id)));
+        const minExisting = existingVnums.length > 0 ? Math.min(...existingVnums) : null;
+        if (minExisting !== null && newMin > minExisting) {
+          alert(`Minimum VNUM cannot be greater than existing room VNUM: ${minExisting}`);
+          vnumMinInput.value = shadowMin;
+          return;
+        }
+        setMinVnum(newMin);
+        setLastAssignedVnum(newMin - 1);
+        if (typeof recalculateAvailableVnums === 'function') recalculateAvailableVnums();
       });
   
-      vnumMaxInput.addEventListener('input', () => {
-        setMaxVnum(parseInt(vnumMaxInput.value) || 9999);
+      // On blur, commit vnum change
+      vnumMaxInput.addEventListener('blur', () => {
+        const newMax = parseInt(vnumMaxInput.value, 10) || 9999;
+        const existingVnums = [];
+        rooms.forEach(level => level.forEach(r => existingVnums.push(r.userData.id)));
+        const maxExisting = existingVnums.length > 0 ? Math.max(...existingVnums) : null;
+        if (maxExisting !== null && newMax < maxExisting) {
+          alert(`Maximum VNUM cannot be less than existing room VNUM: ${maxExisting}`);
+          vnumMaxInput.value = shadowMax;
+          return;
+        }
+        setMaxVnum(newMax);
+        if (typeof recalculateAvailableVnums === 'function') recalculateAvailableVnums();
       });
     }
 
     // Save sidebar field edits to selectedRoom.userData
-    document.getElementById('roomVnum')?.addEventListener('input', e => {
-      if (selectedRoom) selectedRoom.userData.id = parseInt(e.target.value, 10);
-    });
     document.getElementById('roomName')?.addEventListener('input', e => {
       if (selectedRoom) selectedRoom.userData.name = e.target.value;
     });

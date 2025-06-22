@@ -15,11 +15,15 @@ export let maxVnum = 199;
 
 export function setMinVnum(val) {
   minVnum = val;
+  document.dispatchEvent(new CustomEvent('vnumRangeChanged', { detail: { minVnum, maxVnum } }));
 }
 
 export function setMaxVnum(val) {
   maxVnum = val;
+  document.dispatchEvent(new CustomEvent('vnumRangeChanged', { detail: { minVnum, maxVnum } }));
 }
+
+
 
 /**
  * Default keybinds for project actions.
