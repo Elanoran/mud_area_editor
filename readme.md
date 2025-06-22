@@ -5,13 +5,14 @@ Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and 
 ## Demo
 
 [ Main ] Behold, brave dungeon architect! Venture forth to a tested, dragon-approved realm:  
+
 [https://elanoran.github.io/mud_area_editor/](https://elanoran.github.io/mud_area_editor/)
 
-[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control.  
+[ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control:  
+
 [https://mud-area-editor.pages.dev/](https://mud-area-editor.pages.dev/)
 
-Feast your eyes upon a screenshot of our mechanical familiars at work:
-![Screenshot of the MUD Area Editor](/assets/images/Screenshot.png)
+![Screenshot of the MUD Area Editor](Screenshot.png)
 
 ## Supported Features
 
@@ -104,3 +105,5 @@ Tweak `formats.json` as you like; our code politely accommodates new rites witho
 ## Disclaimer
 
 This project is a **work in progress**, much like a novice wizard’s apprenticeship. No extensive testing has been done. Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).
+=======
+This project is a **work in progress**. No extensive testing has been done. Use at your own risk and always keep backups.
