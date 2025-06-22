@@ -11,7 +11,7 @@ import { switchLevel, currentLevel } from '../core/level.js';
 import { selectedRoom, setSelectedRoom, clearUsedVnums, clearLastAssignedVnum, areaNameInput, filenameInput, setAreaNameInput, setFilenameInput } from '../core/state.js';
 import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { levelContainers, rooms } from '../core/store.js';
-import { setGroundFloorVisible, groundFloorVisible, animateRoomFallAndExplode, animateRoomExplode } from '../animations/animations.js';
+import { setGroundFloorVisible, floorToggleBtn, groundFloorVisible, animateRoomFallAndExplode, animateRoomExplode } from '../animations/animations.js';
 import { LEVEL_OFFSET, areaNames } from '../constants/index.js';
 import { getFormats } from '../state/formats.js';
 import { dirVectorToIndex, getDirectionName } from '../utils/vectors.js';
@@ -22,6 +22,7 @@ import { updateRoomInfo } from '../ui/roomInfo.js';
 import { grid, setGridVisible, getGridVisible } from '../scene/grid.js';
 import { updateFloorToLowestLevel } from '../core/level.js';
 import { getCurrentFloorSize } from '../core/level.js';
+import { toggleCompass, isCompassVisible } from '../scene/compass.js';
 
 export let selectedRoomColor = '#8888ff';
 
@@ -56,35 +57,39 @@ redoBtn.addEventListener('click', () => {
 // Delete Room button
 const deleteBtn = document.getElementById('deleteRoomBtn');
 deleteBtn.addEventListener('click', () => {
+    deleteSelectedRoom();
+});
+
+export function deleteSelectedRoom() {
     if (!selectedRoom) {
-    alert('No room selected to delete.');
-    return;
+        alert('No room selected to delete.');
+        return;
     }
     //if (!confirm('Are you sure you want to delete this room?')) return;
     const room = selectedRoom;
     const levelIndex = room.userData.level + LEVEL_OFFSET;
     // Remove exit lines
     room.userData.exitLinks.forEach(line => {
-    levelContainers.forEach(container => container.remove(line));
+        levelContainers.forEach(container => container.remove(line));
     });
     // Clean up exits in other rooms
     rooms.forEach(levelArr => {
-    levelArr.forEach(other => {
-        if (other !== room && other.userData.exits) {
-        for (const dir in other.userData.exits) {
-            if (other.userData.exits[dir].room === room) {
-            delete other.userData.exits[dir];
+        levelArr.forEach(other => {
+            if (other !== room && other.userData.exits) {
+                for (const dir in other.userData.exits) {
+                    if (other.userData.exits[dir].room === room) {
+                        delete other.userData.exits[dir];
+                    }
+                }
             }
-        }
-        }
-    });
+        });
     });
     // Remove outline if present
     if (room.outlineMesh) {
-    levelContainers[levelIndex].remove(room.outlineMesh);
-    room.outlineMesh.geometry.dispose();
-    room.outlineMesh.material.dispose();
-    delete room.outlineMesh;
+        levelContainers[levelIndex].remove(room.outlineMesh);
+        room.outlineMesh.geometry.dispose();
+        room.outlineMesh.material.dispose();
+        delete room.outlineMesh;
     }
     // Free vnum, animate falling and explosion instead of immediate removal
     freeVnum(room.userData.id);
@@ -99,7 +104,7 @@ deleteBtn.addEventListener('click', () => {
     if (typeof drawLinks === 'function') drawLinks();
     updateRoomInfo(null);
     pushHistory();
-});
+}
 
 // Clean Scene button
 const cleanBtn = document.getElementById('cleanSceneBtn');
@@ -175,21 +180,35 @@ if (helpPopup && helpBtn && helpClose) {
     });
 }
 
-const floorToggleBtn = document.getElementById('floorToggleBtn');
 export function updateFloorVisibilityButton() {
     if (!floorToggleBtn) return;
     const icon = floorToggleBtn.querySelector('i');
+    if (!icon) return;
+    // Remove both toggle-btn-on and toggle-btn-off
+    icon.classList.remove('toggle-btn-on', 'toggle-btn-off');
     if (groundFloorVisible) {
-      icon.classList.remove('fa-eye-slash');
-      icon.classList.add('fa-eye');
-      floorToggleBtn.title = "Hide ground floor";
+        floorToggleBtn.title = "Hide ground floor";
+        icon.classList.add('toggle-btn-on');
     } else {
-      icon.classList.remove('fa-eye');
-      icon.classList.add('fa-eye-slash');
-      floorToggleBtn.title = "Show ground floor";
+        floorToggleBtn.title = "Show ground floor";
+        icon.classList.add('toggle-btn-off');
     }
 }
 
+const compassBtn = document.getElementById('compassBtn');
+if (compassBtn) {
+    compassBtn.addEventListener('click', () => {
+        toggleCompass(grid, levelContainers);
+        const visible = isCompassVisible();
+        compassBtn.title = visible ? "Hide Compass" : "Show Compass";
+        compassBtn.classList.toggle('active', visible);
+        const icon = compassBtn.querySelector('i');
+        if (icon) {
+            icon.classList.remove('toggle-btn-on', 'toggle-btn-off');
+            icon.classList.add(visible ? 'toggle-btn-on' : 'toggle-btn-off');
+        }
+    });
+}
 
 if (floorToggleBtn) {
     floorToggleBtn.addEventListener('click', () => {
@@ -586,3 +605,14 @@ document.getElementById('exportFormatBtn')?.addEventListener('click', () => {
 export function isGroundFloorVisible() {
   return groundFloorVisible;
 }
+// Keybind: Delete selected room with Delete key
+window.addEventListener('keydown', (e) => {
+  if (
+    (e.key === 'Delete' || e.key === 'Del') &&
+    !e.repeat &&
+    document.activeElement.tagName !== 'INPUT' &&  // avoid when typing in a field
+    document.activeElement.tagName !== 'TEXTAREA'
+  ) {
+    deleteSelectedRoom();
+  }
+});

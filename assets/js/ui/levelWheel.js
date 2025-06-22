@@ -7,6 +7,9 @@
  */
 
 import { switchLevel, currentLevel } from '../core/level.js';
+import { isCompassVisible, updateCompassLabels } from '../scene/compass.js';
+import { grid } from '../scene/grid.js';
+import { levelContainers } from '../core/store.js';
 
 // TODO: Move level wheel to ui/levelWheel.js
 export function registerLevelWheel() {
@@ -31,7 +34,7 @@ export function registerLevelWheel() {
     if (!wheel) return;
     wheel.innerHTML = '';
     // Render from highest (top, positive) to lowest (bottom, negative)
-    for (let i = currentLevel + 5; i >= currentLevel - 5; i--) {
+    for (let i = currentLevel + 2; i >= currentLevel - 2; i--) {
       if (i < MIN_LEVEL || i > MAX_LEVEL) continue;
       const el = document.createElement('div');
       el.className = 'level-item';
@@ -45,6 +48,7 @@ export function registerLevelWheel() {
         el.addEventListener('click', () => {
           switchLevel(i);
           renderLevelWheel();
+          updateCompassLabels(grid, levelContainers);
         });
       }
       wheel.appendChild(el);
@@ -54,12 +58,14 @@ export function registerLevelWheel() {
     if (currentLevel < MAX_LEVEL) {
       switchLevel(currentLevel + 1);
       renderLevelWheel();
+      updateCompassLabels(grid, levelContainers);
     }
   };
   document.getElementById('levelWheelDown').onclick = () => {
     if (currentLevel > MIN_LEVEL) {
       switchLevel(currentLevel - 1);
       renderLevelWheel();
+      updateCompassLabels(grid, levelContainers);
     }
   };
   // On level change, re-render wheel:
@@ -67,6 +73,7 @@ export function registerLevelWheel() {
   window.switchLevel = function(newLevel) {
     origSwitchLevel(newLevel);
     renderLevelWheel();
+    updateCompassLabels(grid, levelContainers);
   };
   renderLevelWheel();
   // --- Enable scrolling with mouse wheel on the level wheel ---
@@ -79,10 +86,32 @@ export function registerLevelWheel() {
       if (delta > 0 && currentLevel > MIN_LEVEL) {
         switchLevel(currentLevel - 1);
         renderLevelWheel();
+        updateCompassLabels(grid, levelContainers);
       } else if (delta < 0 && currentLevel < MAX_LEVEL) {
         switchLevel(currentLevel + 1);
         renderLevelWheel();
+        updateCompassLabels(grid, levelContainers);
       }
     }, { passive: false });
   }
+  // --- Enable keyboard up/down for level wheel ---
+  window.addEventListener('keydown', (event) => {
+    // Skip if typing in input/textarea
+    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+    if (event.key === 'ArrowUp') {
+      if (currentLevel < 20) {
+        switchLevel(currentLevel + 1);
+        renderLevelWheel();
+        updateCompassLabels(grid, levelContainers);
+        event.preventDefault();
+      }
+    } else if (event.key === 'ArrowDown') {
+      if (currentLevel > -20) {
+        switchLevel(currentLevel - 1);
+        renderLevelWheel();
+        updateCompassLabels(grid, levelContainers);
+        event.preventDefault();
+      }
+    }
+  });
 }

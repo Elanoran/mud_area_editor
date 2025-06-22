@@ -6,6 +6,32 @@
  */
 
 import { THREE } from '../vendor/three.js';
+
+// Helper: Remove all wall label meshes from all levels
+export function removeAllWallLabels() {
+  const wallLabelPrefix = 'wallLabel_';
+  levelContainers.forEach(container => {
+    container.children
+      .filter(obj => obj.name && obj.name.startsWith(wallLabelPrefix))
+      .forEach(obj => {
+        container.remove(obj);
+        obj.geometry?.dispose?.();
+        obj.material?.dispose?.();
+      });
+  });
+}
+// Wall label color name mapping
+const WALL_LABEL_COLORS = {
+  'red': 0xff4b4b,
+  'blue': 0x4b82ff,
+  'green': 0x33dd77,
+  'yellow': 0xffe44b,
+  'purple': 0xcc44ff,
+  'orange': 0xffa500,
+  'white': 0xffffff,
+  'gray': 0x888888,
+  'default': 0xffffff
+};
 // --- Add a 3D text label to the south wall of the ground floor ---
 import { FontLoader } from '../vendor/three.js';
 import { TextGeometry } from '../vendor/three.js';
@@ -84,10 +110,6 @@ export function switchLevel(newLevel) {
     updateGrid(rows, cols);
     if (grid) {
       updateCompassLabels(grid, levelContainers);
-      for (const key of Object.keys(compassLabels)) {
-        levelContainers.forEach(g => g.remove(compassLabels[key]));
-        levelContainers[currentLevel + LEVEL_OFFSET].add(compassLabels[key]);
-      }
     }
 }
 
@@ -105,9 +127,64 @@ export function getCurrentFloorSize() {
   return [rows, cols];
 }
 
+/**
+ * Adds all wall labels for the ground floor.
+ * @param {number} width - Ground/floor width.
+ * @param {number} wallHeight - Wall/ground height.
+ * @param {number} height - Grid height.
+ * @param {number} lowestIdx - Level index for placement.
+ * @param {number} floorTopY - Y position of floor top.
+ * @param {boolean} useBoxLabels - If true, use box label placement logic (non-displacement ground).
+ */
+export function addGroundWallLabels(width, wallHeight, height, lowestIdx, floorTopY, useBoxLabels = false) {
+  const areaNameElem = document.getElementById('areaName');
+  const areaNameText = areaNameElem?.value || areaNameElem?.textContent || 'Area Name';
+  addWallLabel(areaNameText, width, wallHeight, width, height, "south", lowestIdx, {
+    align: "left",
+    fontSize: 0.2,
+    sideMargin: 0.4,
+    fromTop: true,
+    topMargin: useBoxLabels ? 0.7 : 0.4,
+    baseY: floorTopY,
+    labelYOffset: 0.15
+  });
+
+  addWallLabel('North', width, wallHeight, width, height, "north", lowestIdx, {
+    align: "center",
+    fontSize: 0.2,
+    baseY: floorTopY,
+    labelYOffset: 0.15,
+    labelColor: "red"
+  });
+
+  addWallLabel('South', width, wallHeight, width, height, "south", lowestIdx, {
+      align: "center",
+      fontSize: 0.2,
+      baseY: floorTopY,
+      labelYOffset: 0.15,
+      labelColor: "green"
+    });
+    addWallLabel('West', width, wallHeight, width, height, "west", lowestIdx, {
+      align: "center",
+      fontSize: 0.2,
+      baseY: floorTopY,
+      labelYOffset: 0.15
+    });
+    addWallLabel('East', width, wallHeight, width, height, "east", lowestIdx, {
+      align: "center",
+      fontSize: 0.2,
+      baseY: floorTopY,
+      labelYOffset: 0.15
+    });
+
+  if (!useBoxLabels) {
+    
+  }
+}
+
 // --- Ground Floor follows lowest room level ---
 export function updateFloorToLowestLevel(width, height) {
-  console.log('updateFloorToLowestLevel called');
+  //console.log('updateFloorToLowestLevel called');
   // Ground thickness and vertical offset from the grid plane
   const thickness = groundFloorThickness;  // fixed base floor thickness
   const offset = groundFloorOffset;        // vertical offset from grid
@@ -191,7 +268,7 @@ export function updateFloorToLowestLevel(width, height) {
     floorMeshes[lowestIdx] = plane;
 
     const floorTopY = -(offset + disp / 2);
-    console.log('floorTopY:', floorTopY, 'totalHeight:', totalHeight, 'offset:', offset);
+    //console.log('floorTopY:', floorTopY, 'totalHeight:', totalHeight, 'offset:', offset);
 
     const skirtOverlap = disp;
     const skirtHeight = totalHeight;
@@ -212,26 +289,7 @@ export function updateFloorToLowestLevel(width, height) {
     floorMeshes[lowestIdx + '_skirt'] = skirt;
 
     if (groundFloorVisible) {
-      const areaNameElem = document.getElementById('areaName');
-      const areaNameText = areaNameElem?.value || areaNameElem?.textContent || 'Area Name';
-      addWallLabel(areaNameText, width, wallHeight, width, height, "south", lowestIdx, {
-        align: "left",
-        fontSize: 0.2,
-        sideMargin: 0.4,
-        fromTop: true,
-        topMargin: 0.4,
-        baseY: floorTopY,
-        labelYOffset: 0.15
-      });
-      //addWallLabel('South', width, wallHeight, width, height, "south", lowestIdx);
-      addWallLabel('North', width, wallHeight, width, height, "north", lowestIdx, {
-        align: "center",
-        fontSize: 0.2,
-        baseY: floorTopY,
-        labelYOffset: 0.15
-      });
-      //addWallLabel('West', width, wallHeight, width, height, "west", lowestIdx);
-      //addWallLabel('East', width, wallHeight, width, height, "east", lowestIdx);
+      addGroundWallLabels(width, wallHeight, height, lowestIdx, floorTopY, /*useBoxLabels=*/ false);
     }
   } else {
     const boxGeo = new THREE.BoxGeometry(width, wallHeight, height);
@@ -243,29 +301,10 @@ export function updateFloorToLowestLevel(width, height) {
     floorMeshes[lowestIdx] = box;
 
     const floorTopY = -(offset + disp / 2);
-    console.log('floorTopY:', floorTopY, 'totalHeight:', totalHeight, 'offset:', offset);
+    //console.log('floorTopY:', floorTopY, 'totalHeight:', totalHeight, 'offset:', offset);
 
     if (groundFloorVisible) {
-      const areaNameElem = document.getElementById('areaName');
-      const areaNameText = areaNameElem?.value || areaNameElem?.textContent || 'Area Name';
-      addWallLabel(areaNameText, width, wallHeight, width, height, "south", lowestIdx, {
-        align: "left",
-        fontSize: 0.2,
-        sideMargin: 0.4,
-        fromTop: true,
-        topMargin: 0.7,
-        baseY: floorTopY,
-        labelYOffset: 0.15
-      });
-      //addWallLabel('South', width, wallHeight, width, height, "south", lowestIdx);
-      addWallLabel('North', width, wallHeight, width, height, "north", lowestIdx, {
-        align: "center",
-        fontSize: 0.2,
-        baseY: floorTopY,
-        labelYOffset: -0.3
-      });
-      //addWallLabel('West', width, wallHeight, width, height, "west", lowestIdx);
-      //addWallLabel('East', width, wallHeight, width, height, "east", lowestIdx);
+      addGroundWallLabels(width, wallHeight, height, lowestIdx, floorTopY, /*useBoxLabels=*/ true);
     }
   }
 }
@@ -291,7 +330,7 @@ export function addWallLabel(
   levelIdx = null, // Which level/group to attach the text mesh to
   options = {}     // Alignment, font size, margin etc.
 ) {
-  console.log('addWallLabel called with baseY:', options?.baseY, 'wallHeight:', wallHeight, 'text:', text);
+  //console.log('addWallLabel called with baseY:', options?.baseY, 'wallHeight:', wallHeight, 'text:', text);
   if (levelIdx === null) {
     levelIdx = 0;
     for (let i = 0; i < rooms.length; i++) {
@@ -319,7 +358,14 @@ export function addWallLabel(
       size: fontSize,
       height: 0,
     });
-    const textMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const labelColorName = options.labelColor || options.labelClass || "default";
+    const labelColor = WALL_LABEL_COLORS[labelColorName] || WALL_LABEL_COLORS["default"];
+    const labelOpacity = options.opacity !== undefined ? options.opacity : 1.0;
+    const textMat = new THREE.MeshBasicMaterial({
+      color: labelColor,
+      transparent: labelOpacity < 1.0,
+      opacity: labelOpacity
+    });
     const textMesh = new THREE.Mesh(textGeo, textMat);
 
     textGeo.computeBoundingBox();

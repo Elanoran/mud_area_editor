@@ -8,9 +8,13 @@
 
 import { THREE } from '../vendor/three.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
+import { currentLevel } from '../core/level.js';
 
 // --- Compass label logic ---
 export let compassLabels = null;
+
+// Track compass label visibility state
+export let compassVisible = false;
 
 // Compass label meshes (Text Meshes or Sprites for N/S/E/W)
 export function createCompassLabels() {
@@ -63,9 +67,12 @@ export function updateCompassLabels(grid, levelContainers) {
 
     if (!compassLabels) {
       compassLabels = createCompassLabels();
-    } else {
-      for (const key of Object.keys(compassLabels)) {
-        levelContainers[LEVEL_OFFSET].remove(compassLabels[key]);
+    }
+
+    // Remove compass labels from all levelContainers to prevent duplicates
+    for (const key of Object.keys(compassLabels)) {
+      for (let c = 0; c < levelContainers.length; ++c) {
+        levelContainers[c].remove(compassLabels[key]);
       }
     }
 
@@ -77,7 +84,28 @@ export function updateCompassLabels(grid, levelContainers) {
     compassLabels.east.position.set(width / 2, COMPASS_Y, 0);
     compassLabels.west.position.set(-width / 2, COMPASS_Y, 0);
 
+    if (!compassVisible) return;
+
+    // Add compass labels only to the current grid level container
+    const container = levelContainers[currentLevel + LEVEL_OFFSET];
     for (const key of Object.keys(compassLabels)) {
-      levelContainers[LEVEL_OFFSET].add(compassLabels[key]);
+      container.add(compassLabels[key]);
     }
   }
+
+// Getter for compass visibility state
+export function isCompassVisible() {
+  return compassVisible;
+}
+
+/**
+ * Toggle compass labels on/off.
+ * Updates compassVisible and calls updateCompassLabels to handle placement and visibility.
+ * @param {Object} grid - The grid object.
+ * @param {Array} levelContainers - The level containers array.
+ */
+export function toggleCompass(grid, levelContainers) {
+  if (!levelContainers || !levelContainers[LEVEL_OFFSET]) return;
+  compassVisible = !compassVisible;
+  updateCompassLabels(grid, levelContainers);
+}

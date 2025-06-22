@@ -21,6 +21,25 @@ export function setMaxVnum(val) {
   maxVnum = val;
 }
 
+/**
+ * Default keybinds for project actions.
+ * Format: { actionName: 'Key' }
+ */
+export const keybinds = {
+  moveUp:      'ArrowUp',
+  moveDown:    'ArrowDown',
+  moveLeft:    'ArrowLeft',
+  moveRight:   'ArrowRight',
+  nextLevel:   'PageUp',
+  prevLevel:   'PageDown',
+  save:        's',         // (suggested: use with ctrlKey)
+  open:        'o',         // (suggested: use with ctrlKey)
+  toggleFloor: 'f',         // (for toggling ground floor)
+  showHelp:    'F1',
+  delete:      'Delete',
+  // ...add more as needed
+};
+
 /* 
  * Groundfloor options: grass, asphalt, fabric, blue, sand, dirt, charcoal
  */

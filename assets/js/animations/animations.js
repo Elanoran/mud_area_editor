@@ -6,6 +6,8 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
+import { removeAllWallLabels, getCurrentFloorSize, updateFloorToLowestLevel } from '../core/level.js';
+
 import { THREE } from '../vendor/three.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
 import { floorMeshes } from '../core/store.js';
@@ -14,6 +16,8 @@ import { updateFloorVisibilityButton } from '../ui/buttons.js';
 
 let activePuffs = [];
 export let groundFloorVisible = true;
+
+export const floorToggleBtn = document.getElementById('floorToggleBtn');
 
 /**
  * Updates and cleans up all active smoke and fire puffs.
@@ -307,7 +311,7 @@ export function animateRoomPopIn(roomMesh) {
 }
 
 // --- Animate sun (directional light) up/down and fade floor in/out ---
-export function animateSunAndFloor(show, duration = 1200) {
+export function animateSunAndFloor(show, duration = 1200, onDone) {
     const light = getMainLight();
     if (!light) return;
     if (window.sunAnimationActive) return;
@@ -351,7 +355,7 @@ export function animateSunAndFloor(show, duration = 1200) {
 
       affectedFloors.forEach(floor => {
         floor.material.opacity = opacity;
-        floor.visible = opacity > 0.01;
+        floor.visible = true; // Always keep visible during animation
       });
 
       if (t < 1) {
@@ -361,32 +365,46 @@ export function animateSunAndFloor(show, duration = 1200) {
         light.position.copy(to);
         affectedFloors.forEach(floor => {
           floor.material.opacity = show ? 1 : 0;
-          floor.visible = show;
+          // No longer set .visible here!
         });
         window.sunAnimationActive = false;
+        if (typeof onDone === "function") onDone();
       }
     }
 
     requestAnimationFrame(step);
   }
 
-  // Function to show/hide the floor mesh with animation
- export function setGroundFloorVisible(visible) {
-    // Only run animation if visibility changes
-    if (groundFloorVisible === visible) return;
-    if (window.sunAnimationActive) return;
-    groundFloorVisible = visible;
-    // For fade in: make sure all are visible at start
-    if (visible) {
-      for (let key in floorMeshes) {
-        if (floorMeshes[key]) {
-          floorMeshes[key].visible = true;
-        }
+// Function to show/hide the floor mesh with animation
+export function setGroundFloorVisible(visible) {
+  if (window.sunAnimationActive) return;
+
+  if (visible) {
+    // Always re-show (even if already flagged)
+    for (let key in floorMeshes) {
+      if (floorMeshes[key]) {
+        floorMeshes[key].visible = true;      // Ensure visible
+        floorMeshes[key].material.opacity = 0; // Start fade-in from 0 opacity
       }
     }
-    animateSunAndFloor(visible);
+    groundFloorVisible = true;
     updateFloorVisibilityButton();
+    animateSunAndFloor(true, undefined, () => {
+      const [width, height] = getCurrentFloorSize();
+      updateFloorToLowestLevel(width, height);
+    });
+  } else {
+    if (groundFloorVisible === false) return;
+    animateSunAndFloor(false, undefined, () => {
+      for (let key in floorMeshes) {
+        if (floorMeshes[key]) floorMeshes[key].visible = false;
+      }
+      groundFloorVisible = false;
+      updateFloorVisibilityButton();
+      removeAllWallLabels();
+    });
   }
+}
 
   // Set to hidden on start
   setGroundFloorVisible(true);

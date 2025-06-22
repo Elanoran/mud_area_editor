@@ -19,7 +19,7 @@
           <button id="undoBtn" class="ui-element" title="Undo">↺</button>
           <button id="redoBtn" class="ui-element" title="Redo">↻</button>
           <button id="cleanSceneBtn" class="ui-element" title="Clean Scene"><i class="fa-solid fa-broom"></i></button>
-          <button id="floorToggleBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
+          <button id="floorToggleBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
           <button id="fitViewBtn" class="ui-element" title="Lock"><i class="fa-solid fa-lock"></i></button>
           <button id="helpBtn" class="ui-element" title="Help" style="cursor: pointer;">
             <i class="fa-solid fa-info" style="pointer-events: none;"></i>
@@ -37,12 +37,12 @@
         <div id="areaInfoContainer">
           <div id="gridTab" class="tab-content active">
             <div class="toolbar" style="display: flex; gap: 6px; margin-bottom: 0;flex-direction: initial;">
-              <button id="floorToggleBtn" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye"></i></button>
-              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
-              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
-              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
-              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
-              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+              <button id="floorToggleBtn" class="ui-element" title="Show ground floor"><i class="fa-solid fa-square"></i></button>
+              <button id="compassBtn" class="ui-element" title="Show Compass"><i class="fa-solid fa-compass toggle-btn-off"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
             </div>
             <div class="field-group">
               <div style="display: flex; align-items: center; gap: 10px;margin-top: 5px;">
@@ -72,12 +72,12 @@
           </div>
           <div id="areaTab" class="tab-content">
             <div class="toolbar" style="display: flex; gap: 6px; margin-bottom: 0;flex-direction: initial;">
-              <button id="floorToggleBtn3" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
-              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
-              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
-              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
-              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
-              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+              <button id="floorToggleBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Show ground floor"><i class="fa-solid fa-eye-slash"></i></button>
+              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
             </div>
             <div class="field-group" style="margin-top: 10px;">
               <label>Area Name:<br>
@@ -118,11 +118,11 @@
           </div>
           <div id="roomTab" class="tab-content">
             <div class="toolbar" style="display: flex; flex-direction: initial; gap: 6px;">
-              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="Add"><i class="fa-solid fa-plus"></i></button>
-              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="Remove"><i class="fa-solid fa-minus"></i></button>
-              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="Refresh"><i class="fa-solid fa-sync"></i></button>
-              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="Save"><i class="fa-solid fa-save"></i></button>
-              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="Download"><i class="fa-solid fa-download"></i></button>
+              <button id="extraBtn1" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn2" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
               <button id="deleteRoomBtn" class="ui-element" title="Delete Room"><i class="fa-solid fa-trash"></i></button>
             </div>
             <div class="field-group">
@@ -170,21 +170,21 @@
       <button id="levelWheelDown" class="wheel-arrow">&#9660;</button>
     </div>
   </div>
-  <div id="helpPopup" class="ui-element" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#333; padding:20px; border:1px solid #888; z-index:1000; color:white;">
+  <div id="helpPopup" class="ui-element">
     <button id="helpClose" style="position:absolute; top:5px; right:8px; font-size:16px; background:none; border:none; color:white; cursor:pointer;">✕</button>
     <h2>Editor Help</h2>
-    <p>Welcome to the Room Editor. Here's what you can do:</p>
+    <p><strong style="font-size: 1.2em;">Welcome to the Room Editor. Here's what you can do:</strong></p>
     <ul>
-      <li>Use the grid to place rooms on different levels.</li>
-      <li><span class="key">Shift</span> + <span class="key">Left-click</span> on the grid to add a room. (With no other room selected)</li>
-      <li>Mark an existing room and click the delete button in the toolbar to remove it.</li>
-      <li><span class="key">click</span> a room to select it for linking.</li>
-      <li><span class="key">Shift</span> + <span class="key">Left-click</span> another room to create or remove a directional link between them.</li>
-      <li>After a room has been placed you can click the lock button toolbar to freely move a selected rooms.</li>
-      <li>Use the inputs on the left to edit room VNUM, name, and description.</li>
-      <li>Use the dropdowns and file buttons to import/export your layout.</li>
-      <li>Pick a color below the Grid section to define the color of new rooms, or recolor a selected room.</li>
-      <li>If you made a mistake or want to redo an action, click redo or undo buttons.</li>
+      <li><strong>Summon a Room: <i>(Key: <kbd>Shift+Mouse Left Click</kbd>)</i></strong> Hover over the grid, channel a bit of Shift + Left-click magic, and behold, a brand new room appears (provided you’re not already entangled with another room’s selection).</li>
+      <li><strong>Banishing a Room: <i>(Key: <kbd>Delete</kbd> key)</i></strong> Select the unfortunate room destined for oblivion and click the delete icon. Think of it as politely asking it to depart this plane of existence.</li>
+      <li><strong>Linking Realms: <i>(Key: <kbd>Shift+Mouse Left Click</kbd>)</i></strong> Click a room to mark it as your current focus, then Shift + Left click another room to forge or sever a directional passage. It’s like arranging diplomatic treaties between kingdoms, sometimes you break alliances as much as you make them.</li>
+      <li><strong>Lock and Tinker:</strong> After conjuring a room, click the lock button to free it from its grid prison; then drag it about like a mischievous imp rearranging furniture in the night.</li>
+      <li><strong>Inscribing Lore:</strong> Use the fields on the left to assign a VNUM, bestow a name, and inscribe a description. Treat it as writing the foreword to an epic saga, no pressure.</li>
+      <li><strong>Import/Export Rituals:</strong> Summon JSON files or dispatch your creation into the ether via the import/export controls. It’s akin to sending messages by raven, only faster and without the feathers.</li>
+      <li><strong>Colouring the Aether:</strong> Choose a hue from the palette beneath the Room section to set the color for newly conjured rooms, or repaint a selected room as though you’re doodling on reality itself.</li>
+      <li><strong>Undo/Redo Incantations:</strong> Made a misstep in your master plan? Click undo or redo to bend time and correct, or reintroduce, your previous decisions. Use responsibly; paradoxes may ensue.</li>
+      <li><strong>Reveal Hidden Layers: <i>(Key: <kbd>UP or DOWN</kbd> key)</i></strong> Toggle floor visibility to peer into lower levels or hide them away, like peeking under the floorboards for secret passages (or dust bunnies).</li>
+      <li><strong>Save Your Masterpiece:</strong> When satisfied, hit save or download to preserve your handiwork for posterity, or for the next unsuspecting adventurer to explore.</li>
     </ul>
   </div>
   <script type="module" src="./assets/js/main.js" defer></script>
