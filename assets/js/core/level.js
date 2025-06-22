@@ -40,7 +40,7 @@ import { selectedRoom, setSelectedRoom, areaNameInput } from '../core/state.js';
 import { groundFloorThickness, groundFloorOffset } from '../core/settings.js';
 import { rooms, levelContainers, floorMeshes } from '../core/store.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
-import { updateGrid, grid, getCurrentSurfaceTextures } from '../scene/grid.js';
+import { updateGrid, grid, getCurrentSurfaceTextures, getGridVisible, setGridVisible } from '../scene/grid.js';
 import { updateCompassLabels, compassLabels } from '../scene/compass.js';
 import { createSurfaceMaterial, setRoomEmissive } from '../textures/surface.js';
 import { groundFloorVisible } from '../animations/animations.js';
@@ -106,6 +106,10 @@ export function switchLevel(newLevel) {
     if (grid) {
       levelContainers.forEach(g => g.remove(grid));
       levelContainers[currentLevel + LEVEL_OFFSET].add(grid);
+    }
+    // Toggle grid visibility if it was previously hidden when switching levels
+    if (!getGridVisible()) {
+      setGridVisible(!getGridVisible());
     }
     updateGrid(rows, cols);
     if (grid) {

@@ -40,8 +40,7 @@ Deep within `formats.json` lie the templates. Tinker to your heart’s content:
       "exit": "D%DIRECTION%\n%DOOR_DESC%~\n%KEYWORDS%~\n%FLAGS% %KEY% %TO_VNUM%\n",
       "extra": "E\n%KEYWORDS%~\n%EXTRA_DESC%~\n",
       "dirLabels": [
-        "North", "East", "South", "West", "Up", "Down",
-        "Northeast", "Northwest", "Southeast", "Southwest"
+        "North", "East", "South", "West", "Up", "Down", "Northeast", "Northwest", "Southeast", "Southwest"
       ]
     },
     "AW": {
