@@ -13,6 +13,7 @@ import { getGridLocked } from '../ui/init.js';
 import { hoverRoom } from '../ui/hoverLabel.js';
 import { rooms } from '../core/store.js';
 import { updateRoomPosition } from '../state/rooms.js';
+import { animateCollisionBounce } from '../animations/animations.js';
 
 // TODO: Move pointerup handler to interaction/dragging.js
 export function registerPointerupHandler(controls, getDragStartPos, setDragStartPos) {
@@ -63,6 +64,8 @@ export function registerPointerupHandler(controls, getDragStartPos, setDragStart
     if (collision) {
       // Revert to original full start position
       updateRoomPosition(selectedRoom, startPos.x, startPos.z, startPos.y);
+      // Play bounce animation
+      animateCollisionBounce(selectedRoom);
       didRevert = true;
     }
     // Re-enable OrbitControls rotation after dragging

@@ -18,6 +18,13 @@ let surfaceTextures = loadSurfaceTextures(getCurrentSurface());
 
 // grid
 export let grid;
+/**
+ * Returns the current grid group.
+ * @returns {THREE.Group}
+ */
+export function getGrid() {
+  return grid;
+}
 export let gridSize = { width: 20, height: 20 };
 
 export function setGridSize(width, height) {
@@ -125,6 +132,8 @@ export function updateGrid(width, height) {
     group.geometry = { parameters: { width, height } };
 
     grid = group;
+    // Ensure grid renders above ripple effects
+    grid.renderOrder = 1;
     levelContainers[currentLevel + LEVEL_OFFSET].add(grid);
     updateCompassLabels(grid, levelContainers);
     updateFloorToLowestLevel(width, height);

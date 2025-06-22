@@ -6,7 +6,10 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
+
+import { updateRoomPosition } from '../state/rooms.js';
 import { removeAllWallLabels, getCurrentFloorSize, updateFloorToLowestLevel } from '../core/level.js';
+
 
 import { THREE } from '../vendor/three.js';
 import { LEVEL_OFFSET } from '../constants/index.js';
@@ -409,51 +412,124 @@ export function setGroundFloorVisible(visible) {
   // Set to hidden on start
   setGroundFloorVisible(true);
 
- export function spawnSmokePuff(pos, scene, count = 6) {
-    // Fire puffs
-    for (let i = 0; i < fireCount; i++) {
-      const geo = new THREE.SphereGeometry(0.09 + Math.random() * 0.10, 10, 10);
-      const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(0.08 + 0.10 * Math.random(), 1, 0.55 + Math.random() * 0.15),
-        transparent: true,
-        opacity: 0.8,
-        emissive: 0xff6600,
-        emissiveIntensity: 1.1,
-        roughness: 0.5,
-        metalness: 0,
-        depthWrite: false
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.copy(pos);
-      mesh.position.x += (Math.random() - 0.5) * 0.20;
-      mesh.position.y += 0.38 + Math.random() * 0.16;
-      mesh.position.z += (Math.random() - 0.5) * 0.20;
-      mesh.userData = { puffLife: 0, puffSpeed: 0.5 + Math.random() * 0.5, isFire: true };
+export function spawnSmokePuff(pos, scene, count = 6) {
+  // Determine the actual THREE.Scene root from the provided container
+  let targetScene = scene;
+  while (targetScene && !targetScene.isScene) {
+    targetScene = targetScene.parent;
+  }
+  if (!targetScene) targetScene = scene;
+  // Smoke puffs only
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.SphereGeometry(0.15 + Math.random() * 0.1, 12, 12);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xcccccc,
+      transparent: true,
+      opacity: 0.45 + Math.random() * 0.25,
+      roughness: 1,
+      metalness: 0,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.position.x += (Math.random() - 0.5) * 0.25;
+    mesh.position.y += 0.44 + Math.random() * 0.23;
+    mesh.position.z += (Math.random() - 0.5) * 0.25;
+    // Store puff speed for update
+    mesh.userData = { puffLife: 0, puffSpeed: 0.5 + Math.random() * 0.5 };
+    targetScene.add(mesh);
+    activePuffs.push(mesh);
+  }
+  // Always run cleanup loop
+  const sceneRef = targetScene;
+  (function animateSmoke() {
+    updateSmokePuffs(sceneRef);
+    if (activePuffs.length > 0) {
+      requestAnimationFrame(animateSmoke);
+    }
+  })();
+}
 
-      scene.add(mesh);
-      activePuffs.push(mesh);
-    }
-    // Smoke puffs
-    for (let i = activePuffs.length - 1; i >= 0; i--) {
-      const puff = activePuffs[i];
-      puff.userData.puffLife += 0.016;
-      if (puff.userData.isFire) {
-        // Fire puffs: fast, fade+shrink+orange
-        puff.material.opacity *= 0.84;
-        puff.material.emissiveIntensity *= 0.90;
-        puff.scale.multiplyScalar(1.09 + 0.01 * Math.random());
-        puff.position.y += 0.016 * puff.userData.puffSpeed;
-      } else {
-        // Smoke puffs: slow, fade+grow+drift
-        puff.material.opacity *= 0.93;
-        puff.scale.multiplyScalar(1.04 + 0.01 * Math.random());
-        puff.position.y += 0.012 * puff.userData.puffSpeed;
+/**
+ * Animate a quick horizontal “throw-back” with smoke and a floor ripple.
+ * @param {THREE.Object3D & { mesh?: THREE.Object3D }} room
+ */
+export function animateCollisionBounce(room) {
+  // Record original position
+  const origPos = room.position.clone();
+  const bounceHeight = 0.3;
+  const upDuration = 70;    // ms rising
+  const downDuration = 300;  // ms falling
+  // Animate rising
+  const upStart = performance.now();
+  function animateUp(now) {
+    const t = Math.min(1, (now - upStart) / upDuration);
+    const y = THREE.MathUtils.lerp(origPos.y, origPos.y + bounceHeight, t);
+    updateRoomPosition(room, origPos.x, origPos.z, y);
+    if (t < 1) {
+      requestAnimationFrame(animateUp);
+    } else {
+      // Animate falling with bounce easing
+      const downStart = performance.now();
+      function bounceOut(t) {
+        // simple easeOutBounce
+        const n1 = 7.5625, d1 = 2.75;
+        if (t < 1 / d1) {
+          return n1 * t * t;
+        } else if (t < 2 / d1) {
+          return n1 * (t -= 1.5 / d1) * t + 0.75;
+        } else if (t < 2.5 / d1) {
+          return n1 * (t -= 2.25 / d1) * t + 0.9375;
+        } else {
+          return n1 * (t -= 2.625 / d1) * t + 0.984375;
+        }
       }
-      if (puff.material.opacity < 0.05) {
-        scene.remove(puff);
-        puff.geometry.dispose();
-        puff.material.dispose();
-        activePuffs.splice(i, 1);
+      function animateDown(now2) {
+        const t2 = Math.min(1, (now2 - downStart) / downDuration);
+        const eased = bounceOut(t2);
+        const y2 = THREE.MathUtils.lerp(origPos.y + bounceHeight, origPos.y, eased);
+        updateRoomPosition(room, origPos.x, origPos.z, y2);
+        if (t2 < 1) {
+          requestAnimationFrame(animateDown);
+        } else {
+          // Effects at end of bounce
+          // Spawn smoke
+          if (typeof spawnSmokePuff === 'function') {
+            spawnSmokePuff(origPos.clone(), room.parent, /*count=*/8);
+          }
+          // Ripple under room
+          const ringGeo = new THREE.RingGeometry(0.3, 0.35, 32);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.6, side: THREE.DoubleSide
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          // Start ring hidden under the room
+          ring.scale.set(0.001, 0.001, 1);
+          ring.renderOrder = 0;
+          ring.material.depthWrite = false;
+          ring.material.depthTest = false;
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.set(origPos.x, origPos.y - 0.49, origPos.z);
+          room.parent.add(ring);
+          const rippleStart = performance.now();
+          function animateRipple(now3) {
+            const t3 = Math.min(1, (now3 - rippleStart) / 300);
+            const scale = 3 * t3;
+            ring.scale.set(scale, scale, 1);
+            ring.material.opacity = 0.6 * (1 - t3);
+            if (t3 < 1) {
+              requestAnimationFrame(animateRipple);
+            } else {
+              room.parent.remove(ring);
+              ring.geometry.dispose();
+              ring.material.dispose();
+            }
+          }
+          requestAnimationFrame(animateRipple);
+        }
       }
+      requestAnimationFrame(animateDown);
     }
+  }
+  requestAnimationFrame(animateUp);
 }
