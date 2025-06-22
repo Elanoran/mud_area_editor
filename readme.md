@@ -12,7 +12,7 @@ Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and 
 
 [https://mud-area-editor.pages.dev/](https://mud-area-editor.pages.dev/)
 
-![Screenshot of the MUD Area Editor](Screenshot.png)
+![Screenshot of the MUD Area Editor](assets/images/Screenshot.png)
 
 ## Supported Features
 
