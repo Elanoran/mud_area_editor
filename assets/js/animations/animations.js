@@ -533,3 +533,47 @@ export function animateCollisionBounce(room) {
   }
   requestAnimationFrame(animateUp);
 }
+
+// assets/js/entities/sheep.js
+
+
+export function createSheep() {
+  const sheep = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.SphereGeometry(0.18, 16, 16);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.set(0, 0.18, 0);
+  sheep.add(body);
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.10, 16, 16);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xeeeecc });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.set(0, 0.29, 0.16);
+  sheep.add(head);
+
+  // Legs (four little cylinders)
+  for (let i = 0; i < 4; i++) {
+    const legGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.17, 8);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const leg = new THREE.Mesh(legGeo, legMat);
+    leg.position.set(
+      i < 2 ? -0.07 : 0.07,
+      0.085,
+      i % 2 === 0 ? -0.07 : 0.07
+    );
+    sheep.add(leg);
+  }
+
+  // Optional: ears, eyes...
+
+  sheep.userData = {
+    direction: Math.random() * Math.PI * 2,
+    target: null,
+    wanderTimer: 0
+  };
+
+  return sheep;
+}

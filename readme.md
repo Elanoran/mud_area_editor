@@ -1,6 +1,20 @@
+![Banner](assets/images/editor-banner.jpg)
+
 # MUD Area Editor
 
 Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and m(ulti-)u(ser) d(omain).] world mapshaper, to the Most Convenient Area Editor in the Multiverse (or at least the Internet). Whether you’re crafting a dank oubliette beneath a questionable tavern or a sunlit glade frequented by musical pixies with identity crises, this tool spares you the torment of scribbling ASCII diagrams on tavern napkins. Instead, you point'n click, drag'n drop, and generally conduct your dungeon-building with all the ease of rearranging rooms in the Shades (but with significantly fewer pickpockets).
+
+![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)&nbsp;&nbsp;&nbsp;![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)&nbsp;&nbsp;&nbsp;![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)
+
+## Table of Contents
+
+- [Demo](#demo)
+- [Supported Features](#supported-features)
+- [Format Template Support](#format-template-support)
+- [Usage](#usage)
+- [Branch Model](#branch-model)
+- [Notes](#notes)
+- [Disclaimer](#disclaimer)
 
 ## Demo
 
@@ -96,14 +110,16 @@ Tweak `formats.json` as you like; our code politely accommodates new rites witho
 
 ## Notes
 
-- Default export uses the currently selected format in the dropdown; treat it like choosing between tea or something stronger.
-- Rooms without names or descriptions will default to VNUM; like an unnamed alleyway, it still leads somewhere.
-- AW and ROM formats currently strut their stuff best; others may require spells of adjustment.
+> [!NOTE]
+> Default export uses the currently selected format in the dropdown; treat it like choosing between tea or something stronger.
+> Rooms without names or descriptions will default to VNUM; like an unnamed alleyway, it still leads somewhere.
+> AW and ROM formats currently strut their stuff best; others may require spells of adjustment.
 
 ---
 
 ## Disclaimer
 
-This project is a **work in progress**, much like a novice wizard’s apprenticeship. No extensive testing has been done. Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).
-=======
-This project is a **work in progress**. No extensive testing has been done. Use at your own risk and always keep backups.
+> [!CAUTION]
+> This project is a work in progress, much like a novice wizard’s apprenticeship.
+> No extensive testing has been done.
+> Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).

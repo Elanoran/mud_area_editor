@@ -48,16 +48,18 @@ import { SURFACE_MATERIALS } from '../textures/surface.js';
 
 export let currentLevel = 0;
 
-export function switchLevel(newLevel) {
-    // Clear selected room and remove any highlight outline
-    if (selectedRoom) {
-      if (selectedRoom.outlineMesh) {
-        levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-        selectedRoom.outlineMesh.geometry.dispose();
-        selectedRoom.outlineMesh.material.dispose();
-        delete selectedRoom.outlineMesh;
+export function switchLevel(newLevel, deselect = true) {
+    if (deselect) {
+      // Clear selected room and remove any highlight outline
+      if (selectedRoom) {
+        if (selectedRoom.outlineMesh) {
+          levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
+          selectedRoom.outlineMesh.geometry.dispose();
+          selectedRoom.outlineMesh.material.dispose();
+          delete selectedRoom.outlineMesh;
+        }
+        setSelectedRoom(null);
       }
-      setSelectedRoom(null);
     }
     // Clear any highlighted room from all levels
     for (const level of rooms) {

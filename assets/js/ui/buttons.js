@@ -1,3 +1,5 @@
+// Sheep state flag: true if sheep is active/alive, false otherwise
+window.sheepActive = false;
 /**
  * @file assets/js/ui/buttons.js
  * @description UI buttons. buttons up...
@@ -5,13 +7,14 @@
  * @author Elanoran
  * @web https://github.com/Elanoran/mud_area_editor
  */
+
 import { undoStack, redoStack, MAX_HISTORY, restoreState, clearUndoStack, clearRedoStack, pushHistory } from '../state/history.js';
 import { gridLocked, setGridLocked } from '../ui/init.js';
-import { switchLevel, currentLevel } from '../core/level.js';
+import { switchLevel, currentLevel, updateFloorToLowestLevel, getCurrentFloorSize } from '../core/level.js';
 import { selectedRoom, setSelectedRoom, clearUsedVnums, clearLastAssignedVnum, areaNameInput, filenameInput, setAreaNameInput, setFilenameInput } from '../core/state.js';
 import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { levelContainers, rooms } from '../core/store.js';
-import { setGroundFloorVisible, floorToggleBtn, groundFloorVisible, animateRoomFallAndExplode, animateRoomExplode } from '../animations/animations.js';
+import { setGroundFloorVisible, floorToggleBtn, groundFloorVisible, createSheep, animateRoomFallAndExplode, animateRoomExplode } from '../animations/animations.js';
 import { LEVEL_OFFSET, areaNames } from '../constants/index.js';
 import { getFormats } from '../state/formats.js';
 import { dirVectorToIndex, getDirectionName } from '../utils/vectors.js';
@@ -20,13 +23,15 @@ import { freeVnum } from '../state/rooms.js';
 import { getScene } from '../core/scene.js';
 import { updateRoomInfo } from '../ui/roomInfo.js';
 import { grid, setGridVisible, getGridVisible } from '../scene/grid.js';
-import { updateFloorToLowestLevel } from '../core/level.js';
-import { getCurrentFloorSize } from '../core/level.js';
 import { toggleCompass, isCompassVisible } from '../scene/compass.js';
 
 export let selectedRoomColor = '#8888ff';
 
 export const gridSelect = document.getElementById('gridSelect');
+
+let sheep = null;
+let sheepDirection = 0;
+let sheepWanderTimer = 0;
 
 // Undo button
 undoBtn.addEventListener('click', () => {
@@ -229,6 +234,187 @@ if (gridToggleBtn) {
       }
       // Reflect state in button styling
       gridToggleBtn.classList.toggle('active', getGridVisible());
+    });
+}
+
+// Move Room Up/Down buttons
+const moveRoomUpBtn = document.getElementById('moveRoomUpBtn');
+const moveRoomDownBtn = document.getElementById('moveRoomDownBtn');
+
+function moveSelectedRoomBy(delta) {
+  console.log('moveSelectedRoomBy called');
+    if (!selectedRoom) return;
+    const oldLevel = selectedRoom.userData.level;
+    const newLevel = oldLevel + delta;
+    const oldIndex = oldLevel + LEVEL_OFFSET;
+    const newIndex = newLevel + LEVEL_OFFSET;
+    // Check bounds
+    if (newIndex < 0 || newIndex >= levelContainers.length) return;
+    // Remove room and outline from old container
+    if (selectedRoom.outlineMesh) {
+        levelContainers[oldIndex].remove(selectedRoom.outlineMesh);
+    }
+    levelContainers[oldIndex].remove(selectedRoom);
+    // Remove from rooms array
+    const oldArray = rooms[oldIndex];
+    const roomPos = oldArray.indexOf(selectedRoom);
+    if (roomPos !== -1) oldArray.splice(roomPos, 1);
+    // Update level
+    selectedRoom.userData.level = newLevel;
+    // Add to new container and array
+    rooms[newIndex].push(selectedRoom);
+    levelContainers[newIndex].add(selectedRoom);
+    if (selectedRoom.outlineMesh) {
+        levelContainers[newIndex].add(selectedRoom.outlineMesh);
+    }
+    // Update visuals and history
+    recalculateExits();
+    if (typeof drawLinks === 'function') drawLinks();
+    updateRoomInfo(selectedRoom);
+    pushHistory();
+    // Update floor and grid after moving rooms
+    const [width, height] = getCurrentFloorSize();
+    updateFloorToLowestLevel(width, height);
+    // Switch view to the room's new level
+    switchLevel(newLevel, false);
+}
+
+if (moveRoomUpBtn) {
+    moveRoomUpBtn.addEventListener('click', () => moveSelectedRoomBy(1));
+}
+if (moveRoomDownBtn) {
+    moveRoomDownBtn.addEventListener('click', () => moveSelectedRoomBy(-1));
+}
+
+// "Don't Push" button logic (robust sheep state and animation handling)
+const dontBtn = document.getElementById('dontBtn');
+if (dontBtn) {
+    dontBtn.addEventListener('click', () => {
+        // Always fully clean up previous sheep and animation, if present
+        if (window.sheepAnimFrame) {
+            cancelAnimationFrame(window.sheepAnimFrame);
+            window.sheepAnimFrame = null;
+        }
+        if (window.sheep && window.sheep.parent) {
+            window.sheep.parent.remove(window.sheep);
+        }
+        window.sheep = null;
+        window.sheepActive = false;
+        window.sheepFalling = false;
+
+        // Create and add new sheep
+        window.sheep = createSheep();
+        window.sheep.name = 'Huge Sheep';
+        window.sheep.scale.set(2.5, 2.5, 2.5); // Make it "huge"
+        window.sheep.position.set(0, 0, 0);
+        const scene = getScene();
+        scene.add(window.sheep);
+        window.sheepActive = true;
+
+        alert('You have summoned the huge sheep! 🐑');
+
+        // Sheep wander and explode logic
+        window.sheepWanderTimer = 0;
+        window.sheepDirection = Math.random() * Math.PI * 2;
+        window.sheepFallVelocity = 0;
+        window.sheepFallOpacity = 1;
+
+        // Sheep is considered "active" while wandering or falling/exploding
+        function animateSheep() {
+            // Handle sheep falling/vanish
+            if (window.sheepFalling && window.sheep) {
+                window.sheepFallVelocity -= 0.006;
+                window.sheep.position.y += window.sheepFallVelocity;
+                window.sheepFallOpacity -= 0.04;
+                window.sheep.rotation.x += 0.2;
+                window.sheep.traverse(obj => {
+                    if (obj.material && obj.material.opacity !== undefined) {
+                        obj.material.transparent = true;
+                        obj.material.opacity = Math.max(0, window.sheepFallOpacity);
+                    }
+                });
+                if (window.sheep.position.y < -5 || window.sheepFallOpacity <= 0) {
+                    // Fully remove sheep and cleanup state
+                    if (window.sheep && window.sheep.parent) window.sheep.parent.remove(window.sheep);
+                    window.sheepActive = false;
+                    window.sheepFalling = false;
+                    window.sheep = null;
+                    if (window.sheepAnimFrame) {
+                        cancelAnimationFrame(window.sheepAnimFrame);
+                        window.sheepAnimFrame = null;
+                    }
+                    return;
+                }
+                window.sheepAnimFrame = requestAnimationFrame(animateSheep);
+                return;
+            }
+
+            // Normal sheep wandering/room collision
+            if (window.sheep && !window.sheepFalling) {
+                window.sheepWanderTimer--;
+                if (window.sheepWanderTimer <= 0) {
+                    window.sheepDirection = Math.random() * Math.PI * 2;
+                    window.sheepWanderTimer = 100 + Math.random() * 200;
+                }
+                const speed = 0.017;
+                window.sheep.position.x += Math.cos(window.sheepDirection) * speed;
+                window.sheep.position.z += Math.sin(window.sheepDirection) * speed;
+                window.sheep.rotation.y = -window.sheepDirection + Math.PI / 2;
+
+                // Get grid bounds dynamically
+                const bounds = grid && grid.geometry ? (grid.geometry.parameters || {}) : {};
+                const halfWidth  = (bounds.width  || 24) / 2;
+                const halfHeight = (bounds.height || 24) / 2;
+
+                // Sheep-room collision: trigger explosions
+                for (const levelArr of rooms) {
+                    for (const room of levelArr) {
+                        if (!window.sheep) break;
+                        const dist = window.sheep.position.distanceTo(room.position);
+                        const sheepRadius = 0.25 * window.sheep.scale.x;
+                        const roomRadius = 0.35;
+                        if (dist < sheepRadius + roomRadius) {
+                            // Explode both
+                            animateRoomExplode(room, room.parent, scene);
+                            // Explode each mesh inside the sheep group
+                            window.sheep.traverse(obj => {
+                              if (obj.geometry) {
+                                animateRoomExplode(obj, obj.parent, scene);
+                              }
+                            });
+                            // Fully remove sheep and cleanup state
+                            if (window.sheep && window.sheep.parent) window.sheep.parent.remove(window.sheep);
+                            window.sheepActive = false;
+                            window.sheepFalling = false;
+                            window.sheep = null;
+                            if (window.sheepAnimFrame) {
+                                cancelAnimationFrame(window.sheepAnimFrame);
+                                window.sheepAnimFrame = null;
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                // Sheep falls off grid: trigger falling animation
+                if (
+                    window.sheep.position.x < -halfWidth ||
+                    window.sheep.position.x > halfWidth ||
+                    window.sheep.position.z < -halfHeight ||
+                    window.sheep.position.z > halfHeight
+                ) {
+                    window.sheepFalling = true;
+                    window.sheepFallVelocity = 0;
+                    window.sheepFallOpacity = 1;
+                    window.sheepAnimFrame = requestAnimationFrame(animateSheep);
+                    return;
+                }
+            }
+
+            window.sheepAnimFrame = requestAnimationFrame(animateSheep);
+        }
+
+        animateSheep();
     });
 }
 
