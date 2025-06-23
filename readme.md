@@ -1,4 +1,4 @@
-![Screenshot of the MUD Area Editor](assets/images/editor-banner.jpg)
+![Banner](assets/images/editor-banner.jpg)
 
 # MUD Area Editor
 
