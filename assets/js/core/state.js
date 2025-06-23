@@ -96,10 +96,11 @@ export function recalculateAvailableVnums() {
     if (!usedVnums.has(v)) availableVnums.add(v);
   }
   // For debugging
+  /*
   console.log('recalculateAvailableVnums:', {
     minVnum, maxVnum,
     purged,
     used: Array.from(usedVnums),
     available: Array.from(availableVnums)
-  });
+  });*/
 }

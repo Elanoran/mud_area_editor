@@ -76,6 +76,8 @@ export function registerLevelWheel() {
     updateCompassLabels(grid, levelContainers);
   };
   renderLevelWheel();
+  // Expose for external modules to refresh the level wheel UI
+  window.renderLevelWheel = renderLevelWheel;
   // --- Enable scrolling with mouse wheel on the level wheel ---
   const levelWheelDiv = document.getElementById('levelWheelContainer');
   if (levelWheelDiv) {

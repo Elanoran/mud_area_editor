@@ -24,6 +24,7 @@ import { getScene } from '../core/scene.js';
 import { updateRoomInfo } from '../ui/roomInfo.js';
 import { grid, setGridVisible, getGridVisible } from '../scene/grid.js';
 import { toggleCompass, isCompassVisible } from '../scene/compass.js';
+import { updateRoomPosition } from '../state/rooms.js';
 
 export let selectedRoomColor = '#8888ff';
 
@@ -242,7 +243,6 @@ const moveRoomUpBtn = document.getElementById('moveRoomUpBtn');
 const moveRoomDownBtn = document.getElementById('moveRoomDownBtn');
 
 function moveSelectedRoomBy(delta) {
-  console.log('moveSelectedRoomBy called');
     if (!selectedRoom) return;
     const oldLevel = selectedRoom.userData.level;
     const newLevel = oldLevel + delta;
@@ -267,6 +267,8 @@ function moveSelectedRoomBy(delta) {
     if (selectedRoom.outlineMesh) {
         levelContainers[newIndex].add(selectedRoom.outlineMesh);
     }
+    // Update room position in application state
+    updateRoomPosition(selectedRoom, selectedRoom.position.x, selectedRoom.position.z);
     // Update visuals and history
     recalculateExits();
     if (typeof drawLinks === 'function') drawLinks();
@@ -277,6 +279,9 @@ function moveSelectedRoomBy(delta) {
     updateFloorToLowestLevel(width, height);
     // Switch view to the room's new level
     switchLevel(newLevel, false);
+    if (window.renderLevelWheel) {
+      window.renderLevelWheel();
+    }
 }
 
 if (moveRoomUpBtn) {
