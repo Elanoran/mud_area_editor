@@ -1,3 +1,5 @@
+![Screenshot of the MUD Area Editor](assets/images/editor-banner.jpg)
+
 # MUD Area Editor
 
 ![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)&nbsp;&nbsp;&nbsp;![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)&nbsp;&nbsp;&nbsp;![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)
