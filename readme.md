@@ -1,8 +1,10 @@
 # MUD Area Editor
 
+![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)&nbsp;&nbsp;&nbsp;![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)&nbsp;&nbsp;&nbsp;![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)
+
 Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and m(ulti-)u(ser) d(omain).] world mapshaper, to the Most Convenient Area Editor in the Multiverse (or at least the Internet). Whether you’re crafting a dank oubliette beneath a questionable tavern or a sunlit glade frequented by musical pixies with identity crises, this tool spares you the torment of scribbling ASCII diagrams on tavern napkins. Instead, you point'n click, drag'n drop, and generally conduct your dungeon-building with all the ease of rearranging rooms in the Shades (but with significantly fewer pickpockets).
 
-![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)&nbsp;&nbsp;&nbsp;![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)&nbsp;&nbsp;&nbsp;![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)
+![Screenshot of the MUD Area Editor](assets/images/Screenshot.png)
 
 ## Table of Contents
 
@@ -23,8 +25,6 @@ Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and 
 [ Dev ] Enter at your own risk! This is the half-baked workshop of a wizard still learning fireball control:  
 
 [https://mud-area-editor.pages.dev/](https://mud-area-editor.pages.dev/)
-
-![Screenshot of the MUD Area Editor](assets/images/Screenshot.png)
 
 ## Supported Features
 
