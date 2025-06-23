@@ -2,7 +2,7 @@
 
 # MUD Area Editor
 
-[![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)](https://github.com/Elanoran/mud_area_editor/blob/main/LICENSE)&nbsp;&nbsp;&nbsp;[![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)](https://github.com/Elanoran/mud_area_editor/stargazers)&nbsp;&nbsp;&nbsp;[![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)](https://github.com/Elanoran/mud_area_editor/releases)
+[![License](https://img.shields.io/github/license/Elanoran/mud_area_editor)](https://github.com/Elanoran/mud_area_editor/blob/main/LICENSE)&nbsp;&nbsp;&nbsp;[![GitHub stars](https://img.shields.io/github/stars/Elanoran/mud_area_editor?style=social)](https://github.com/Elanoran/mud_area_editor/stargazers)&nbsp;&nbsp;&nbsp;[![Release](https://img.shields.io/github/v/tag/Elanoran/mud_area_editor?label=latest%20tag)](https://github.com/Elanoran/mud_area_editor/releases)&nbsp;&nbsp;&nbsp;[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-blue?logo=paypal)](https://paypal.me/Elanoran?country.x=DK&locale.x=da_DK)
 
 Welcome, intrepid MUD [m(ulti-)u(ser) d(ungeon), m(ulti-)u(ser) d(imension) and m(ulti-)u(ser) d(omain).] world mapshaper, to the Most Convenient Area Editor in the Multiverse (or at least the Internet). Whether you’re crafting a dank oubliette beneath a questionable tavern or a sunlit glade frequented by musical pixies with identity crises, this tool spares you the torment of scribbling ASCII diagrams on tavern napkins. Instead, you point'n click, drag'n drop, and generally conduct your dungeon-building with all the ease of rearranging rooms in the Shades (but with significantly fewer pickpockets).
 
