@@ -104,6 +104,4 @@ Tweak `formats.json` as you like; our code politely accommodates new rites witho
 
 ## Disclaimer
 
-This project is a **work in progress**, much like a novice wizard’s apprenticeship. No extensive testing has been done. Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).
-=======
-This project is a **work in progress**. No extensive testing has been done. Use at your own risk and always keep backups.
+This project is a work in progress, much like a novice wizard’s apprenticeship. No extensive testing has been done. Use at your own risk, and always keep backups, lest your dungeon vanish into the Void (and take your sanity with it).
