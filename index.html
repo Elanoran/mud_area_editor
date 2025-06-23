@@ -1,12 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="loading">
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="./assets/css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <title>Room Editor</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #223;
+      overflow: hidden;
+      height: 100%;
+    }
+    html.loading *:not(#loader-overlay):not(#loader-overlay *) {
+      visibility: hidden !important;
+    }
+    html.loading body > *:not(#loader-overlay) {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
+  <div id="loader-overlay">
+    <div class="spinner"></div>
+  </div>
+  <div id="app" class="hidden">
   <div class="header-brand">
     <a href="https://github.com/Elanoran/mud_area_editor" class="branding">
       <img src="assets/images/brand-logo-small.png" alt="Mud Area Editor" class="logo">
@@ -192,6 +211,7 @@
       <li><strong>Save Your Masterpiece:</strong> When satisfied, hit save or download to preserve your handiwork for posterity, or for the next unsuspecting adventurer to explore.</li>
     </ul>
   </div>
+</div><!-- end #app -->
   <script type="module" src="./assets/js/main.js" defer></script>
 </body>
 </html>

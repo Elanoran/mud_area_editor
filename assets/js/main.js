@@ -23,6 +23,9 @@ import { recalculateAvailableVnums } from './core/state.js';
 
 window.addEventListener('load', () => {
 
+  // Remove loading class to apply app reveal logic
+  document.documentElement.classList.remove('loading');
+
   // --- Initialize UI ---
   initUI();
 
@@ -75,5 +78,30 @@ window.addEventListener('load', () => {
 
   // Recalculate available VNUMs after initialization
   recalculateAvailableVnums();
+
+  // Hide loader and reveal app
+  const loader = document.getElementById('loader-overlay');
+  const app = document.getElementById('app');
+
+  if (loader) {
+    loader.style.transition = 'opacity 1s ease';
+    loader.style.opacity = '0';
+    setTimeout(() => loader.style.display = 'none', 300);
+  }
+
+  if (app) {
+    app.classList.remove('hidden');
+    app.style.opacity = '0';
+    app.style.transition = 'opacity 0.1s ease';
+    requestAnimationFrame(() => {
+      app.style.opacity = '1';
+    });
+  }
+
+  // Add animated puff image sequence after sheepy spinner
+  const puff = document.createElement('div');
+  puff.className = 'puff-effect';
+  document.body.appendChild(puff);
+  puff.addEventListener('animationend', () => puff.remove());
 
 });

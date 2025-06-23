@@ -1,13 +1,69 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap');
 
 html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
   height: 100%;
-  margin: 0;
 }
 
 .branding .logo {
   height: 40px;
   opacity: 75%;
+}
+
+html.loading #loader-overlay {
+  visibility: visible !important;
+  background-color: #223;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Loader overlay styles */
+#loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #223;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: background-color 0.8s ease, opacity 0.8s ease;
+}
+
+html:not(.loading) #loader-overlay {
+  opacity: 0;
+  background-color: transparent;
+  pointer-events: none;
+}
+.hidden {
+  visibility: hidden !important;
+}
+
+
+/* Sheep spinner */
+.spinner {
+  width: 200px;
+  height: 200px;
+  background-image: url('../images/sheepy.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  animation: sheep-spin 2s linear infinite;
+}
+
+@keyframes sheep-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 :root {
@@ -729,4 +785,30 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+@keyframes puff-animation {
+  0%   { background-image: url('../images/puff1.png'); transform: scale(2); opacity: 1; }
+  20%  { background-image: url('../images/puff2.png'); transform: scale(2.2); opacity: 1; }
+  50%  { background-image: url('../images/puff3.png'); transform: scale(2.4); opacity: 1; }
+  60%  { background-image: url('../images/puff4.png'); transform: scale(2.6); opacity: 1; }
+  90%  { background-image: url('../images/puff5.png'); transform: scale(2.8); opacity: 1; }
+  100% { opacity: 0; transform: scale(3); }
+}
+
+.puff-effect {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 240px;
+  height: 240px;
+  margin-left: -120px;
+  margin-top: -120px;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  pointer-events: none;
+  z-index: 9999;
+  animation: puff-animation 0.6s steps(1) forwards;
+  background-color: transparent;
 }
