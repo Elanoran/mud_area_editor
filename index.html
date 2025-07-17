@@ -143,7 +143,7 @@
             <div class="toolbar" style="display: flex; flex-direction: initial; gap: 6px;">
               <button id="moveRoomUpBtn" class="ui-element" title="Move Room Up"><i class="fa-solid fa-arrow-up"></i></button>
               <button id="moveRoomDownBtn" class="ui-element" title="Move Room down"><i class="fa-solid fa-arrow-down"></i></button>
-              <button id="extraBtn3" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
+              <button id="toggleRoomLayerVisBtn" class="ui-element" title="Toggle room layer visibility"><i class="fa-solid fa-layer-group"></i></button>
               <button id="extraBtn4" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
               <button id="extraBtn5" style="color: #42425b;text-shadow:none;" class="ui-element" title="(Not available)" disabled><i class="fa-solid fa-minus"></i></button>
               <button id="deleteRoomBtn" class="ui-element" title="Delete Room"><i class="fa-solid fa-trash"></i></button>
@@ -170,6 +170,14 @@
               </label>
             </div>
             <div class="field-group">
+              <label for="sectorSelect">
+                Sector:<br>
+                <select id="sectorSelect" class="full-width">
+                  <!-- Options will be populated via JavaScript -->
+                </select>
+              </label>
+            </div>
+            <div style="padding-top:1em;" class="field-group">
               <label>Name:<br>
                 <input type="text" id="roomName" class="full-width">
               </label>

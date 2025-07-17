@@ -9,6 +9,7 @@
 
 import { updateRoomPosition } from '../state/rooms.js';
 import { removeAllWallLabels, getCurrentFloorSize, updateFloorToLowestLevel } from '../core/level.js';
+import { getScene } from '../core/scene.js';
 
 
 import { THREE } from '../vendor/three.js';
@@ -72,7 +73,8 @@ export function animateStreak(from, to, levelIndex, levelContainers) {
     const streakGeom = new THREE.SphereGeometry(0.13, 10, 10);
     const streak = new THREE.Mesh(streakGeom, streakMaterial);
     streak.position.copy(from);
-    levelContainers[levelIndex].add(streak);
+    // Add to the root scene so it stays in world-space
+    getScene().add(streak);
 
     let t = 0;
     const duration = 0.4; // seconds
@@ -86,7 +88,7 @@ export function animateStreak(from, to, levelIndex, levelContainers) {
       if (t < 1) {
         requestAnimationFrame(animate);
       } else {
-        levelContainers[levelIndex].remove(streak);
+        getScene().remove(streak);
         streak.geometry.dispose();
         streak.material.dispose();
       }
@@ -182,7 +184,13 @@ export function animateRoomExplode(roomMesh, levelContainer, scene) {
   // Remove and dispose of the room mesh immediately
   levelContainer.remove(roomMesh);
   roomMesh.geometry.dispose();
-  roomMesh.material.dispose();
+  // Dispose of mesh materials, handling both single and array cases
+  const mats = Array.isArray(roomMesh.material) ? roomMesh.material : [roomMesh.material];
+  mats.forEach(mat => {
+    if (mat && typeof mat.dispose === 'function') {
+      mat.dispose();
+    }
+  });
 
   // Create and animate a quick cartoon explosion at the former room position
   const particles = [];
@@ -263,7 +271,8 @@ export function animateBreakingLink(positionArray, levelContainers) {
           levelIdx = possibleIdx;
         }
       }
-      levelContainers[levelIdx].add(particle);
+      // Add particles to the root scene
+      getScene().add(particle);
 
       // Animate each particle to "break away"
       const velocity = new THREE.Vector3(
@@ -280,7 +289,7 @@ export function animateBreakingLink(positionArray, levelContainers) {
         if (age < lifetime && particle.material.opacity > 0.04) {
           requestAnimationFrame(animateParticle);
         } else {
-          levelContainers[levelIdx].remove(particle);
+          getScene().remove(particle);
           particle.geometry.dispose();
           particle.material.dispose();
         }

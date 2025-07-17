@@ -35,6 +35,7 @@ export function captureState() {
         z: room.position.z,
         level: room.userData.level,
         color: room.userData.color,
+        sector: room.userData.sector,
         exits: Object.entries(room.userData.exits || {}).map(([dir, d]) => ({ dir, to: d.room.userData.id }))
     }));
     return JSON.stringify(data);
@@ -67,7 +68,8 @@ export function restoreState(stateStr) {
         level: entry.level,
         id: entry.id,
         name: entry.name || '',
-        desc: entry.desc || ''
+        desc: entry.desc || '',
+        sector: entry.sector,
       });
       mesh.position.set(entry.x, 0.5, entry.z);
       levelContainers[levelIdx].add(mesh);

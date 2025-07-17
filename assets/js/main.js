@@ -99,9 +99,9 @@ window.addEventListener('load', () => {
   }
 
   // Add animated puff image sequence after sheepy spinner
-  const puff = document.createElement('div');
-  puff.className = 'puff-effect';
-  document.body.appendChild(puff);
-  puff.addEventListener('animationend', () => puff.remove());
+  //const puff = document.createElement('div');
+  //puff.className = 'puff-effect';
+  //document.body.appendChild(puff);
+  //puff.addEventListener('animationend', () => puff.remove());
 
 });

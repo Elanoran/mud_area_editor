@@ -116,10 +116,7 @@ body {
   position: fixed;
   top: 10px;
   left: 285px;
-  background: rgba(30, 30, 40, 0.85);
   z-index: 150;
-  border-radius: 8px;
-  box-shadow: 0 5px 6px #00000014, 0 0 10px 2px #fff0 inset, 0 0 0 3px #ffffff08 inset;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -360,6 +357,8 @@ canvas {
   min-height: 160px;
   max-height: 98vh;
   height: auto;
+  z-index: 200;
+  pointer-events: auto;
 }
 
 #tool-info.expanded-area,

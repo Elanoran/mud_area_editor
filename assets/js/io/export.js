@@ -33,7 +33,7 @@ export function exportMapData() {
             .replace('%ROOM_NAME%', name)
             .replace('%ROOM_DESC%', desc)
             .replace('%FLAGS%', '0') // Placeholder
-            .replace('%SECTOR%', '0') // Placeholder
+            .replace('%SECTOR%', room.userData.sector ?? 0)
             .replace('%ZONE%', '0') // Placeholder
             .replace('%EXTRA_FLAGS%', '0'); // Placeholder
 

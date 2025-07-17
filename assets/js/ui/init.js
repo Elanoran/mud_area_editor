@@ -180,4 +180,12 @@ export function initUI() {
         updateGrid(w, h);
       });
     }
+
+  // Prevent clicks on the tool-info panel from reaching the scene canvas
+  const toolInfo = document.getElementById('tool-info');
+  if (toolInfo) {
+    ['pointerdown', 'pointerup', 'pointermove', 'pointerenter', 'pointerleave'].forEach(evt => {
+      toolInfo.addEventListener(evt, e => e.stopPropagation());
+    });
+  }
 }

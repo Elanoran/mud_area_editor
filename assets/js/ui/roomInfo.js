@@ -83,6 +83,11 @@ export function updateRoomInfo(room) {
     if (vnumField) vnumField.value = room?.userData?.id ?? '';
     if (nameField) nameField.value = room?.userData?.name ?? '';
     if (descField) descField.value = room?.userData?.desc ?? '';
+    // Update sector dropdown to match room's current sector
+    const sectorSelect = document.getElementById('sectorSelect');
+    if (sectorSelect) {
+      sectorSelect.value = room?.userData?.sector ?? '';
+    }
     // Update active tab height (for dynamic sidebar resizing)
     const areaInfoContainer = document.getElementById('areaInfoContainer');
     const activeTab = areaInfoContainer?.querySelector('.tab-content.active');

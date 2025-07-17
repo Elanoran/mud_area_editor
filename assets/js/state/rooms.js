@@ -9,6 +9,8 @@
 import { usedVnums, setLastAssignedVnum, getLastAssignedVnum, availableVnums } from '../core/state.js';
 import { minVnum, maxVnum } from '../core/settings.js';
 import { getRoomCenter } from '../utils/geometry.js';
+import { THREE } from '../vendor/three.js';
+import { getExitPoint } from '../interaction/linking.js';
 
 export function getNextVnum() {
     for (let v = minVnum; v <= maxVnum; v++) {
@@ -58,16 +60,28 @@ export function getNextVnum() {
     // Move connected exit lines with the room
     if (room.userData.exitLinks) {
       room.userData.exitLinks.forEach(line => {
-        const pos = line.geometry.attributes.position.array;
-        const fromPos = getRoomCenter(line.userData.fromRoom);
-        const toPos = getRoomCenter(line.userData.toRoom);
-        pos[0] = fromPos.x;
-        pos[1] = fromPos.y;
-        pos[2] = fromPos.z;
-        pos[3] = toPos.x;
-        pos[4] = toPos.y;
-        pos[5] = toPos.z;
-        line.geometry.attributes.position.needsUpdate = true;
+        // Handle exit indicator spheres
+        if (line.userData.isExitIndicator) {
+          const exitPoint = getExitPoint(line.userData.room, line.userData.directionVec, THREE);
+          line.position.copy(exitPoint);
+          return;
+        }
+        // Handle link lines
+        if (line.geometry?.attributes?.position?.array) {
+          const pos = line.geometry.attributes.position.array;
+          // Compute world positions so links stay fixed in world-space
+          const worldFrom = new THREE.Vector3();
+          const worldTo   = new THREE.Vector3();
+          line.userData.fromRoom.getWorldPosition(worldFrom);
+          line.userData.toRoom.getWorldPosition(worldTo);
+          pos[0] = worldFrom.x;
+          pos[1] = worldFrom.y;
+          pos[2] = worldFrom.z;
+          pos[3] = worldTo.x;
+          pos[4] = worldTo.y;
+          pos[5] = worldTo.z;
+          line.geometry.attributes.position.needsUpdate = true;
+        }
       });
     }
     // Update internal data values (if present)

@@ -7,6 +7,20 @@
 
 import { THREE } from '../vendor/three.js';
 
+// Fade control state
+export let fadeLevelIndex = 0;
+export const MAX_FADE_STEPS = 4;
+export const FADE_INCREMENT = 1 / MAX_FADE_STEPS;
+
+/**
+ * Cycle through fade levels (0 = no fade → MAX_FADE_STEPS)
+ * Returns the new fadeLevelIndex.
+ */
+export function cycleFadeLevel() {
+  fadeLevelIndex = (fadeLevelIndex + 1) % (MAX_FADE_STEPS + 1);
+  return fadeLevelIndex;
+}
+
 // Helper: Remove all wall label meshes from all levels
 export function removeAllWallLabels() {
   const wallLabelPrefix = 'wallLabel_';
@@ -72,31 +86,22 @@ export function switchLevel(newLevel, deselect = true) {
     levelContainers.forEach((g, i) => {
       const levelIndex = i - LEVEL_OFFSET;
       const distance = Math.abs(levelIndex - currentLevel);
-      if (distance <= 20) {
-        g.visible = true;
-        g.position.y = (levelIndex - currentLevel) * 2;
-        g.traverse(obj => {
-          if (obj.type === 'Line') return;
-          if (obj.material && obj.material instanceof THREE.Material) {
-            if (!obj.material.transparent) {
-              obj.material.transparent = true;
-            }
-            // Always restore room color from userData.color, not from current color picker
-            if (obj.material.color && obj.material.color instanceof THREE.Color) {
-              // Use room.userData.color if present, else fallback to '#cccccc'
-              const targetColor = obj.userData?.color || '#cccccc';
-              obj.material.color.set(targetColor);
-              // Optionally fade color toward 0x8888ff for distant levels (keep fade logic)
-              const fadeFactor = Math.min(1.0, distance * 0.2);
-              if (fadeFactor > 0.0) {
-                obj.material.color.lerp(new THREE.Color(0x8888ff), fadeFactor);
-              }
-            }
-          }
-        });
-      } else {
-        g.visible = false;
-      }
+      // Show all levels (we'll fade rooms based on distance)
+      g.visible = true;
+      g.position.y = (levelIndex - currentLevel) * 2;
+      g.traverse(obj => {
+        // Skip non-visual groups
+        if (!obj.material) return;
+        // Compute fade strength: current level fully opaque, others fade by distance
+        const fadeStrength = Math.min(1.0, distance * fadeLevelIndex * FADE_INCREMENT);
+        // Support single or multi-material
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const mat of materials) {
+          mat.transparent = true;
+          mat.opacity = 1 - fadeStrength;
+          mat.needsUpdate = true;
+        }
+      });
     });
     // Move grid to current level container and update its size
     let rows = 20, cols = 20;
@@ -117,6 +122,46 @@ export function switchLevel(newLevel, deselect = true) {
     if (grid) {
       updateCompassLabels(grid, levelContainers);
     }
+    // Reposition and fade exit lines in world space
+    rooms.forEach(level =>
+      level.forEach(room =>
+        (room.userData.exitLinks || []).forEach(line => {
+          // -- reposition
+          const posAttr = line.geometry?.attributes?.position;
+          if (posAttr && posAttr.array) {
+            const fromRoom = line.userData.fromRoom;
+            const toRoom   = line.userData.toRoom;
+            const worldFrom = new THREE.Vector3();
+            const worldTo   = new THREE.Vector3();
+            fromRoom.getWorldPosition(worldFrom);
+            toRoom.getWorldPosition(worldTo);
+            const pos = posAttr.array;
+            pos[0] = worldFrom.x; pos[1] = worldFrom.y; pos[2] = worldFrom.z;
+            pos[3] = worldTo.x;   pos[4] = worldTo.y;   pos[5] = worldTo.z;
+            posAttr.needsUpdate = true;
+          }
+          // -- directional fade based on link midpoint level
+          if (line.material) {
+            const materials = Array.isArray(line.material) ? line.material : [line.material];
+            const fromLevel = line.userData.fromRoom.userData.level;
+            const toLevel   = line.userData.toRoom.userData.level;
+            const midLevel  = (fromLevel + toLevel) / 2;
+            const distance  = Math.abs(midLevel - currentLevel);
+            // Compute base fade by level distance and fade step
+            const baseFade = distance * fadeLevelIndex * FADE_INCREMENT;
+            // If the link is horizontal (same-level) on a non-current floor, fade it more aggressively
+            const isHorizontal = (fromLevel === toLevel);
+            const fadeMultiplier = isHorizontal ? 2.0 : 1.5;
+            const fadeStrength = Math.min(1.0, baseFade * fadeMultiplier);
+            materials.forEach(mat => {
+              mat.transparent = true;
+              mat.opacity     = 1 - fadeStrength;
+              mat.needsUpdate = true;
+            });
+          }
+        })
+      )
+    );
 }
 
 /**

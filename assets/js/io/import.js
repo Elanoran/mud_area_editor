@@ -51,7 +51,8 @@ export function importMapData(json) {
         level: entry.level,
         id: entry.id,
         name: entry.name || '',
-        desc: entry.desc || ''
+        desc: entry.desc || '',
+        sector: entry.sector ?? 0
       });
       box.position.set(entry.x, 0.5, entry.z);
       levelContainers[levelIndex].add(box);

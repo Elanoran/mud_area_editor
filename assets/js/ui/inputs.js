@@ -6,14 +6,14 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
-import { usedVnums, setLastAssignedVnum, recalculateAvailableVnums } from '../core/state.js';
+import { usedVnums, setLastAssignedVnum, recalculateAvailableVnums, selectedRoom } from '../core/state.js';
 import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
-import { selectedRoom } from '../core/state.js';
 import { rooms } from '../core/store.js';
 import { updateFloorToLowestLevel, getCurrentFloorSize } from '../core/level.js';
 import { setCurrentSurface } from '../scene/grid.js';
+import { pushHistory } from '../state/history.js';
+import { sectorColorMap } from '../utils/geometry.js';
 
-// assets/js/ui/inputs.js
 export function initRoomFieldListeners() {
   // --- Watch for changes to Area Name input and update floor ---
   const areaNameInput = document.getElementById('areaName');
@@ -48,7 +48,7 @@ export function initRoomFieldListeners() {
   const roomNameInput = document.getElementById('roomName');
   const roomDescInput = document.getElementById('roomDesc');
   if (roomNameInput) {
-    roomNameInput.addEventListener('focus', (e) => {
+    roomNameInput.addEventListener('focus', () => {
       if (selectedRoom) lastRoomName = selectedRoom.userData.name || '';
     });
     roomNameInput.addEventListener('blur', (e) => {
@@ -63,7 +63,7 @@ export function initRoomFieldListeners() {
     });
   }
   if (roomDescInput) {
-    roomDescInput.addEventListener('focus', (e) => {
+    roomDescInput.addEventListener('focus', () => {
       if (selectedRoom) lastRoomDesc = selectedRoom.userData.desc || '';
     });
     roomDescInput.addEventListener('blur', (e) => {
@@ -82,12 +82,12 @@ export function initRoomFieldListeners() {
   const roomVnumInput = document.getElementById('roomVnum');
   if (roomVnumInput) {
     let lastVnum = null;
-    roomVnumInput.addEventListener('focus', (e) => {
+    roomVnumInput.addEventListener('focus', () => {
       if (selectedRoom) lastVnum = selectedRoom.userData.id;
     });
     roomVnumInput.addEventListener('blur', (e) => {
       if (!selectedRoom) return;
-      const newVnum = parseInt(e.target.value);
+      const newVnum = parseInt(e.target.value, 10);
       if (isNaN(newVnum)) return;
 
       if (newVnum < minVnum || newVnum > maxVnum) {
@@ -111,61 +111,99 @@ export function initRoomFieldListeners() {
     });
   }
 
-  // Set initial values in the inputs on load
-    const vnumMinInput = document.getElementById('vnumMin');
-    const vnumMaxInput = document.getElementById('vnumMax');
-
-    let shadowMin = minVnum;
+  // Set initial values in the min/max VNUM inputs
+  const vnumMinInput = document.getElementById('vnumMin');
+  const vnumMaxInput = document.getElementById('vnumMax');
+  let shadowMin = minVnum;
+  let shadowMax = maxVnum;
+  if (vnumMinInput && vnumMaxInput) {
+    vnumMinInput.value = minVnum;
+    vnumMaxInput.value = maxVnum;
     vnumMinInput.addEventListener('focus', () => {
-      shadowMin = parseInt(vnumMinInput.value, 10) || 0;
+      shadowMin = parseInt(vnumMinInput.value, 10) || minVnum;
     });
-
-    let shadowMax = maxVnum;
     vnumMaxInput.addEventListener('focus', () => {
-      shadowMax = parseInt(vnumMaxInput.value, 10) || 9999;
+      shadowMax = parseInt(vnumMaxInput.value, 10) || maxVnum;
     });
-  
-    if (vnumMinInput && vnumMaxInput) {
-      vnumMinInput.value = minVnum;
-      vnumMaxInput.value = maxVnum;
-  
-      // On blur, commit vnum change
-      vnumMinInput.addEventListener('blur', () => {
-        const newMin = parseInt(vnumMinInput.value, 10) || 0;
-        const existingVnums = [];
-        rooms.forEach(level => level.forEach(r => existingVnums.push(r.userData.id)));
-        const minExisting = existingVnums.length > 0 ? Math.min(...existingVnums) : null;
-        if (minExisting !== null && newMin > minExisting) {
-          alert(`Minimum VNUM cannot be greater than existing room VNUM: ${minExisting}`);
-          vnumMinInput.value = shadowMin;
-          return;
-        }
+    vnumMinInput.addEventListener('blur', () => {
+      const newMin = parseInt(vnumMinInput.value, 10) || minVnum;
+      const existing = rooms.flat().map(r => r.userData.id);
+      const minExisting = existing.length ? Math.min(...existing) : null;
+      if (minExisting !== null && newMin > minExisting) {
+        alert(`Minimum VNUM cannot exceed existing room VNUM ${minExisting}`);
+        vnumMinInput.value = shadowMin;
+      } else {
         setMinVnum(newMin);
         setLastAssignedVnum(newMin - 1);
         if (typeof recalculateAvailableVnums === 'function') recalculateAvailableVnums();
-      });
-  
-      // On blur, commit vnum change
-      vnumMaxInput.addEventListener('blur', () => {
-        const newMax = parseInt(vnumMaxInput.value, 10) || 9999;
-        const existingVnums = [];
-        rooms.forEach(level => level.forEach(r => existingVnums.push(r.userData.id)));
-        const maxExisting = existingVnums.length > 0 ? Math.max(...existingVnums) : null;
-        if (maxExisting !== null && newMax < maxExisting) {
-          alert(`Maximum VNUM cannot be less than existing room VNUM: ${maxExisting}`);
-          vnumMaxInput.value = shadowMax;
-          return;
-        }
+      }
+    });
+    vnumMaxInput.addEventListener('blur', () => {
+      const newMax = parseInt(vnumMaxInput.value, 10) || maxVnum;
+      const existing = rooms.flat().map(r => r.userData.id);
+      const maxExisting = existing.length ? Math.max(...existing) : null;
+      if (maxExisting !== null && newMax < maxExisting) {
+        alert(`Maximum VNUM cannot be less than existing room VNUM ${maxExisting}`);
+        vnumMaxInput.value = shadowMax;
+      } else {
         setMaxVnum(newMax);
         if (typeof recalculateAvailableVnums === 'function') recalculateAvailableVnums();
-      });
-    }
+      }
+    });
+  }
 
-    // Save sidebar field edits to selectedRoom.userData
-    document.getElementById('roomName')?.addEventListener('input', e => {
-      if (selectedRoom) selectedRoom.userData.name = e.target.value;
+  // Populate and handle Sector select
+  const sectorSelect = document.getElementById('sectorSelect');
+  if (sectorSelect) {
+    const sectors = [
+      { name: 'inside',       value: 0 },
+      { name: 'city',         value: 1 },
+      { name: 'field',        value: 2 },
+      { name: 'forest',       value: 3 },
+      { name: 'hills',        value: 4 },
+      { name: 'mountain',     value: 5 },
+      { name: 'water_swim',   value: 6 },
+      { name: 'water_noswim', value: 7 },
+      { name: 'air',          value: 9 },
+      { name: 'desert',       value: 10 },
+      { name: 'city_tundra',  value: 11 },
+      { name: 'tundra',       value: 12 },
+      { name: 'swamp',        value: 13 },
+      { name: 'savannah',     value: 14 },
+      { name: 'underwater',   value: 15 },
+      { name: 'beach',        value: 16 }
+    ];
+    sectorSelect.innerHTML = '';
+    sectors.forEach(sec => {
+      const opt = document.createElement('option');
+      opt.value = sec.value;
+      opt.textContent = sec.name.replace('_', ' ');
+      sectorSelect.appendChild(opt);
     });
-    document.getElementById('roomDesc')?.addEventListener('input', e => {
-      if (selectedRoom) selectedRoom.userData.desc = e.target.value;
+    if (selectedRoom && typeof selectedRoom.userData.sector === 'number') {
+      sectorSelect.value = selectedRoom.userData.sector;
+    }
+    sectorSelect.addEventListener('change', e => {
+      const v = parseInt(e.target.value, 10);
+      if (!isNaN(v) && selectedRoom) {
+        selectedRoom.userData.sector = v;
+        if (typeof pushHistory === 'function') pushHistory();
+        // Update the top-face material to match the new sector color
+        const mats = Array.isArray(selectedRoom.material)
+          ? selectedRoom.material
+          : [selectedRoom.material];
+        if (mats[2]) {
+          mats[2].color.set(sectorColorMap[v] || '#cccccc');
+        }
+      }
     });
+  }
+
+  // Save sidebar field edits to selectedRoom.userData
+  document.getElementById('roomName')?.addEventListener('input', e => {
+    if (selectedRoom) selectedRoom.userData.name = e.target.value;
+  });
+  document.getElementById('roomDesc')?.addEventListener('input', e => {
+    if (selectedRoom) selectedRoom.userData.desc = e.target.value;
+  });
 }

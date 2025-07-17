@@ -6,7 +6,27 @@
  * @web https://github.com/Elanoran/mud_area_editor
  */
 
+import { getScene } from '../core/scene.js';
+
 // TODO: Modularize into interaction/linking.js
+/**
+ * Compute the point on the surface of a room's bounding box
+ * in the direction of the given vector.
+ */
+export function getExitPoint(room, directionVec, THREE) {
+  const box = new THREE.Box3().setFromObject(room);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const dir = directionVec.clone().normalize();
+  // Prevent division by zero
+  const dx = Math.abs(dir.x) > 1e-6 ? size.x / 2 / Math.abs(dir.x) : Infinity;
+  const dy = Math.abs(dir.y) > 1e-6 ? size.y / 2 / Math.abs(dir.y) : Infinity;
+  const dz = Math.abs(dir.z) > 1e-6 ? size.z / 2 / Math.abs(dir.z) : Infinity;
+  // Use smallest scale to hit the box face
+  const k = Math.min(dx, dy, dz);
+  return center.clone().add(dir.multiplyScalar(k));
+}
+
 export function handleLinkPointerDown(event, context) {
   const {
     raycaster,
@@ -40,9 +60,9 @@ export function handleLinkPointerDown(event, context) {
     const intersect = intersects[0];
     const from = selectedFace.object;
     const to = intersect.object;
-    const fromPos = getRoomCenter(from);
-    const toPos = getRoomCenter(to);
-    const directionVec = new THREE.Vector3().subVectors(toPos, fromPos);
+    const centerFrom = getRoomCenter(from);
+    const centerTo   = getRoomCenter(to);
+    const directionVec = new THREE.Vector3().subVectors(centerTo, centerFrom);
     const normalized = directionVec.clone().normalize();
     const step = new THREE.Vector3(Math.round(normalized.x), Math.round(normalized.y), Math.round(normalized.z));
     // Accept any straight or diagonal (or up/down) line regardless of distance
@@ -85,22 +105,55 @@ export function handleLinkPointerDown(event, context) {
     );
     if (exitLines.length > 0) {
       exitLines.forEach(line => {
+        // 1) Detach from all level containers
         levelContainers.forEach(container => container.remove(line));
-        if (line.geometry?.attributes?.position) {
-          animateBreakingLink(line.geometry.attributes.position.array, levelContainers);
+        // 2) Remove from scene root
+        getScene().remove(line);
+        // 3) Dispose geometry
+        if (line.geometry) {
+          line.geometry.dispose();
+        }
+        // 4) Dispose materials (handle arrays)
+        const mats = Array.isArray(line.material) ? line.material : [line.material];
+        mats.forEach(mat => {
+          if (mat && typeof mat.dispose === 'function') mat.dispose();
+        });
+        // 5) Remove any exit indicator spheres (if created)
+        if (line.userData.isExitIndicator && line.userData.indicatorMesh) {
+          const indicator = line.userData.indicatorMesh;
+          levelContainers.forEach(container => container.remove(indicator));
+          getScene().remove(indicator);
+          if (indicator.geometry) indicator.geometry.dispose();
+          if (indicator.material && typeof indicator.material.dispose === 'function') {
+            indicator.material.dispose();
+          }
         }
       });
-      from.userData.exitLinks = from.userData.exitLinks.filter(line => !exitLines.includes(line));
-      to.userData.exitLinks   = to.userData.exitLinks.filter(line => !exitLines.includes(line));
-      delete from.userData.exits[fromKey];
-      delete to.userData.exits[toKey];
+      // 6) Clean up all room references and exit mappings
+      rooms.flat().forEach(room => {
+        room.userData.exitLinks = (room.userData.exitLinks || []).filter(l => !exitLines.includes(l));
+        // Remove matching exits entries
+        for (const dir in room.userData.exits) {
+          const link = room.userData.exits[dir];
+          if (link && exitLines.includes(link.lineObject)) {
+            delete room.userData.exits[dir];
+          }
+        }
+      });
+      // 7) Recalculate and redraw
       recalculateExits();
       if (typeof drawLinks === 'function') drawLinks();
       if (typeof updateRoomInfo === 'function') updateRoomInfo(from);
+      // 8) Clear selection outline
       if (selectedRoom?.outlineMesh) {
-        levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(selectedRoom.outlineMesh);
-        selectedRoom.outlineMesh.geometry.dispose();
-        selectedRoom.outlineMesh.material.dispose();
+        const ol = selectedRoom.outlineMesh;
+        levelContainers[selectedRoom.userData.level + LEVEL_OFFSET].remove(ol);
+        if (ol.geometry) ol.geometry.dispose();
+        if (Array.isArray(ol.material)) {
+          ol.material.forEach(m => m.dispose && m.dispose());
+        } else if (ol.material && ol.material.dispose) {
+          ol.material.dispose();
+        }
         delete selectedRoom.outlineMesh;
       }
       setRoomEmissive(selectedRoom?.material, 0x000000);
@@ -113,7 +166,7 @@ export function handleLinkPointerDown(event, context) {
     let blocked = false;
     const dist = directionVec.length();
     for (let i = 1; i < Math.floor(dist); i++) {
-      const mid = fromPos.clone().add(step.clone().multiplyScalar(i));
+      const mid = centerFrom.clone().add(step.clone().multiplyScalar(i));
       const levelRooms = rooms[currentLevel + LEVEL_OFFSET];
       if (levelRooms.some(room =>
         Math.abs(room.position.x - mid.x) <= 0.5 &&
@@ -124,8 +177,18 @@ export function handleLinkPointerDown(event, context) {
         break;
       }
     }
+    // Compute dynamic exit points on each room's face
+    const fromPoint = getExitPoint(from, directionVec, THREE);
+    const toPoint   = getExitPoint(to, directionVec.clone().negate(), THREE);
     if (!blocked && !(from.userData.exits[fromKey] || to.userData.exits[toKey])) {
-      const line = createExitLine(fromPos, toPos, from, to);
+      const line = createExitLine(fromPoint, toPoint, from, to);
+      // Ensure the link is parented to the root scene so it doesn’t follow level transforms
+      const scene = getScene();
+      // Remove from any temporary parent
+      if (line.parent && line.parent !== scene) {
+        line.parent.remove(line);
+      }
+      scene.add(line);
       if (direction !== null) {
         line.userData.direction = direction;
       }

@@ -7,10 +7,11 @@ window.sheepActive = false;
  * @author Elanoran
  * @web https://github.com/Elanoran/mud_area_editor
  */
+import { THREE } from '../vendor/three.js';
 
 import { undoStack, redoStack, MAX_HISTORY, restoreState, clearUndoStack, clearRedoStack, pushHistory } from '../state/history.js';
 import { gridLocked, setGridLocked } from '../ui/init.js';
-import { switchLevel, currentLevel, updateFloorToLowestLevel, getCurrentFloorSize } from '../core/level.js';
+import { switchLevel, currentLevel, updateFloorToLowestLevel, getCurrentFloorSize, cycleFadeLevel, MAX_FADE_STEPS } from '../core/level.js';
 import { selectedRoom, setSelectedRoom, clearUsedVnums, clearLastAssignedVnum, areaNameInput, filenameInput, setAreaNameInput, setFilenameInput } from '../core/state.js';
 import { minVnum, maxVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { levelContainers, rooms } from '../core/store.js';
@@ -25,6 +26,7 @@ import { updateRoomInfo } from '../ui/roomInfo.js';
 import { grid, setGridVisible, getGridVisible } from '../scene/grid.js';
 import { toggleCompass, isCompassVisible } from '../scene/compass.js';
 import { updateRoomPosition } from '../state/rooms.js';
+
 
 export let selectedRoomColor = '#8888ff';
 
@@ -74,10 +76,30 @@ export function deleteSelectedRoom() {
     //if (!confirm('Are you sure you want to delete this room?')) return;
     const room = selectedRoom;
     const levelIndex = room.userData.level + LEVEL_OFFSET;
-    // Remove exit lines
-    room.userData.exitLinks.forEach(line => {
-        levelContainers.forEach(container => container.remove(line));
+    // Remove and dispose all exit lines for this room
+    const linesToRemove = room.userData.exitLinks || [];
+    linesToRemove.forEach(line => {
+      // Detach from all level containers
+      levelContainers.forEach(container => container.remove(line));
+      // Detach from scene root
+      getScene().remove(line);
+      // Dispose geometry
+      if (line.geometry) line.geometry.dispose();
+      // Dispose materials (handles array or single)
+      const mats = Array.isArray(line.material) ? line.material : [line.material];
+      mats.forEach(mat => { if (mat && typeof mat.dispose === 'function') mat.dispose(); });
     });
+    // Clean up references in all rooms
+    rooms.flat().forEach(r => {
+      r.userData.exitLinks = (r.userData.exitLinks || []).filter(l => !linesToRemove.includes(l));
+      for (const dir in r.userData.exits) {
+        if (r.userData.exits[dir]?.room === room) {
+          delete r.userData.exits[dir];
+        }
+      }
+    });
+    // Clear this room’s exitLinks array
+    delete room.userData.exitLinks;
     // Clean up exits in other rooms
     rooms.forEach(levelArr => {
         levelArr.forEach(other => {
@@ -125,17 +147,28 @@ cleanBtn.addEventListener('click', () => {
     .forEach(line => levelContainers[LEVEL_OFFSET].remove(line));
     // Remove all rooms and outlines
     rooms.forEach((levelArr, idx) => {
-    levelArr.forEach(room => {
+      levelArr.forEach(room => {
         if (room.outlineMesh) {
-        levelContainers[idx].remove(room.outlineMesh);
-        room.outlineMesh.geometry.dispose();
-        room.outlineMesh.material.dispose();
+          levelContainers[idx].remove(room.outlineMesh);
+          room.outlineMesh.geometry.dispose();
+          // Dispose outlineMesh materials (handle arrays)
+          const outlineMats = Array.isArray(room.outlineMesh.material)
+            ? room.outlineMesh.material
+            : [room.outlineMesh.material];
+          outlineMats.forEach(mat => {
+            if (mat && typeof mat.dispose === 'function') mat.dispose();
+          });
+          delete room.outlineMesh;
         }
         levelContainers[idx].remove(room);
         room.geometry.dispose();
-        room.material.dispose();
-    });
-    rooms[idx] = [];
+        // Dispose room materials (handle arrays)
+        const mats = Array.isArray(room.material) ? room.material : [room.material];
+        mats.forEach(mat => {
+          if (mat && typeof mat.dispose === 'function') mat.dispose();
+        });
+      });
+      rooms[idx] = [];
     });
     // --- FULLY reset vnum state and UI inputs ---
     setMinVnum(100);
@@ -241,6 +274,34 @@ if (gridToggleBtn) {
 // Move Room Up/Down buttons
 const moveRoomUpBtn = document.getElementById('moveRoomUpBtn');
 const moveRoomDownBtn = document.getElementById('moveRoomDownBtn');
+const toggleRoomLayerVisBtn = document.getElementById('toggleRoomLayerVisBtn');
+if (toggleRoomLayerVisBtn) {
+    // Ensure the button is positioned to contain an absolute overlay
+    toggleRoomLayerVisBtn.style.position = 'relative';
+    // Create overlay element
+    const fadeOverlay = document.createElement('span');
+    fadeOverlay.className = 'fade-overlay';
+    // Style overlay for visibility
+    fadeOverlay.style.position = 'absolute';
+    fadeOverlay.style.top = '15px';
+    fadeOverlay.style.right = '6px';
+    fadeOverlay.style.padding = '2px 4px';
+    fadeOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    fadeOverlay.style.color = '#fff';
+    fadeOverlay.style.fontSize = '0.45rem';
+    fadeOverlay.style.pointerEvents = 'none';
+    // Initialize overlay text
+    fadeOverlay.textContent = '';
+    toggleRoomLayerVisBtn.appendChild(fadeOverlay);
+    // Attach click handler to cycle fade and update overlay
+    toggleRoomLayerVisBtn.addEventListener('click', () => {
+        const idx = cycleFadeLevel();
+        const percent = (idx * 100 / MAX_FADE_STEPS).toFixed(0);
+        fadeOverlay.textContent = `${percent}%`;
+        // Re-apply current level view with new fade settings
+        switchLevel(currentLevel, false);
+    });
+}
 
 function moveSelectedRoomBy(delta) {
     if (!selectedRoom) return;
@@ -452,12 +513,22 @@ document.querySelectorAll('.room-color-option').forEach(btn => {
       selectedRoomColor = btn.dataset.color;
       // Update color of selected room immediately if a room is selected
       if (selectedRoom) {
-        // Only push history if color actually changes
-        if (selectedRoom.userData.color !== selectedRoomColor) {
-          selectedRoom.material.color.set(selectedRoomColor);
-          selectedRoom.userData.color = selectedRoomColor;
-          pushHistory();
-        }
+          // Only update if manual override changes
+          if (selectedRoom.userData.manualColor !== selectedRoomColor) {
+              selectedRoom.userData.manualColor = selectedRoomColor;
+              selectedRoom.userData.color = selectedRoomColor;
+              // Update all materials except the top face (index 2)
+              const mats = Array.isArray(selectedRoom.material)
+                ? selectedRoom.material
+                : [selectedRoom.material];
+              mats.forEach((mat, idx) => {
+                if (idx !== 2 && mat.color instanceof THREE.Color) {
+                  mat.color.set(selectedRoomColor);
+                  mat.needsUpdate = true;
+                }
+              });
+              pushHistory();
+          }
       }
     });
 });
@@ -544,6 +615,7 @@ document.getElementById('exportFormatBtn')?.addEventListener('click', () => {
             id: room.userData.id,
             name: room.userData.name || '',
             desc: room.userData.desc || '',
+            sector: room.userData.sector ?? 0,
             level: levelIndex - LEVEL_OFFSET,
             x: pos.x,
             z: pos.z,
