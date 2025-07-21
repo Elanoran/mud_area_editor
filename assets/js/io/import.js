@@ -15,6 +15,7 @@ import { usedVnums, setLastAssignedVnum } from '../core/state.js';
 import { minVnum, setMinVnum, setMaxVnum } from '../core/settings.js';
 import { switchLevel, currentLevel } from '../core/level.js';
 import { pushHistory } from '../state/history.js';
+import { getScene } from '../core/scene.js';
 
 export function importMapData(json) {
     // Clear current scene and rooms
@@ -79,6 +80,12 @@ export function importMapData(json) {
           const fromPos = getRoomCenter(fromRoom);
           const toPos = getRoomCenter(toRoom);
           const line = createExitLine(fromPos, toPos, fromRoom, toRoom, false); // no animation on import
+          // Ensure the link is parented to the root scene so it doesn’t follow level transforms
+          const scene = getScene();
+          if (line.parent && line.parent !== scene) {
+            line.parent.remove(line);
+          }
+          scene.add(line);
           fromRoom.userData.exitLinks.push(line);
           toRoom.userData.exitLinks.push(line);
           fromRoom.userData.exits[vecKey] = { room: toRoom, direction: vecKey };
